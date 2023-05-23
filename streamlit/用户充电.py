@@ -6,7 +6,7 @@ import time
 import asyncio
 import requests
 import threading
-from streamlit_autorefresh import st_autorefresh
+# from streamlit_autorefresh import st_autorefresh
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx, RerunException
 
 # 设置全局变量
