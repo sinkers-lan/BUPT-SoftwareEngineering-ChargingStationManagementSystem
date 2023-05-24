@@ -1,5 +1,6 @@
 import random
 
+import re
 import streamlit as st
 import datetime
 import time
@@ -9,6 +10,7 @@ import threading
 # from streamlit_autorefresh import st_autorefresh
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx, RerunException
 
+HOST = "http://10.112.241.69:8003"
 # 设置全局变量
 if 'stage' not in st.session_state:
     st.session_state['stage'] = '用户登录'
@@ -67,12 +69,9 @@ if st.session_state['stage'] == '用户登录':
     phone = st.text_input("手机号")
     password = st.text_input("密码")
 
+
     def login(args):
-        print(args)
-        if args == "login":
-            print(datetime.datetime.now(), "用户按下了登录")
-        elif args == "logon":
-            print(datetime.datetime.now(), "用户按下了注册")
+        if args == "logon":
             st.session_state['stage'] = "用户注册"
             return
         if not phone:
@@ -85,11 +84,8 @@ if st.session_state['stage'] == '用户登录':
             st.error("密码不能为空")
             return
         if phone and password:
-            if args == "login":
-                st.session_state['user'] = phone
-                st.session_state['stage'] = "提交充电请求"
-            elif args == "logon":
-                st.success("正在注册...")
+            st.session_state['user'] = phone
+            st.session_state['stage'] = "提交充电请求"
             pass
 
 
@@ -98,7 +94,6 @@ if st.session_state['stage'] == '用户登录':
         st.button("登录", on_click=login, args=("login",))
     with col2:
         st.button("注册", on_click=login, args=("logon",))
-
 
 if st.session_state['stage'] == '用户注册':
     st.markdown("## 智能充电桩充电系统 🎈")
@@ -126,11 +121,22 @@ if st.session_state['stage'] == '用户注册':
         if not car:
             st.error("车牌号不能为空")
             return
+        # pattern = "^[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼A-Z]{1}[A-Z]{1}\s{1}[A-Z0-9]{4}[A-Z0-9挂学警港澳]{1}$"
+        pattern = "([京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼]" \
+              "{1}(([A-HJ-Z]{1}[A-HJ-NP-Z0-9]{5})|([A-HJ-Z]{1}(([DF]{1}[A-HJ-NP-Z0-9]{1}[0-9]{4})|([0-9]{5}[DF]" \
+              "{1})))|([A-HJ-Z]{1}[A-D0-9]{1}[0-9]{3}警)))|([0-9]{6}使)|((([沪粤川云桂鄂陕蒙藏黑辽渝]{1}A)|鲁B|闽D|蒙E|蒙H)" \
+              "[0-9]{4}领)|(WJ[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼·•]{1}[0-9]{4}[TDSHBXJ0-9]{1})" \
+              "|([VKHBSLJNGCE]{1}[A-DJ-PR-TVY]{1}[0-9]{5})"
+        if not re.findall(pattern, car):
+            st.error("车牌号格式不正确")
+            return
         if capacity == 0:
             st.error("电车电池容量不能为零")
             return
-
-        st.success("正在登录...")
+        st.session_state['user'] = phone
+        st.session_state['capacity'] = capacity
+        st.session_state['car'] = car
+        # st.success("正在登录...")
         st.session_state['stage'] = "提交充电请求"
         pass
 
@@ -140,7 +146,6 @@ if st.session_state['stage'] == '用户注册':
         st.button("登录", on_click=login, args=("login",))
     with col2:
         st.button("注册", on_click=login, args=("logon",))
-
 
 
 # 未提交充电请求阶段
@@ -162,12 +167,14 @@ if st.session_state['stage'] == '提交充电请求':
 
     confirm = st.button("提交充电请求", on_click=confirm_on_click)
 
+
 # 等待叫号阶段
 if st.session_state['stage'] == '等待叫号':
     st.markdown("#### 等待叫号")
     # hao = requests.get("http://10.112.241.69:8001/f7").json()
     st.write("")
     hao = 'f7'
+
 
     def show_hao(hao_in, mode_in, degree_in):
         st.write("您的排队号码是:", hao_in, "，您的充电模式:", mode_in, "，您的请求充电量：", degree_in, " (度)")
@@ -234,7 +241,7 @@ if st.session_state['stage'] == '等待叫号':
 
 
     def get_wait_num():
-        wait = requests.get("http://10.112.241.69:8001/wait").json()['num']
+        wait = requests.get(HOST + "/wait").json()['num']
         # wait = 10
         return wait
 
