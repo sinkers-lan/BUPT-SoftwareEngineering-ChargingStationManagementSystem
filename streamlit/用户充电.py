@@ -20,6 +20,8 @@ if 'capacity' not in st.session_state:
     st.session_state['capacity'] = 45.0
 if 'user' not in st.session_state:
     st.session_state['user'] = None
+if 'car' not in st.session_state:
+    st.session_state['car'] = None
 if 'wait' not in st.session_state:
     st.session_state['wait'] = 20
 if 'wait_i' not in st.session_state:
@@ -27,7 +29,7 @@ if 'wait_i' not in st.session_state:
 
 # 设置不同充电阶段的进度侧边栏
 st.sidebar.markdown("## 使用流程")
-if st.session_state['stage'] == '用户登录':
+if st.session_state['stage'] == '用户登录' or st.session_state['stage'] == "用户注册":
     st.sidebar.warning("用户登录")
     st.sidebar.info("提交充电请求")
     st.sidebar.info("等待叫号")
@@ -65,13 +67,14 @@ if st.session_state['stage'] == '用户登录':
     phone = st.text_input("手机号")
     password = st.text_input("密码")
 
-
     def login(args):
         print(args)
         if args == "login":
             print(datetime.datetime.now(), "用户按下了登录")
         elif args == "logon":
             print(datetime.datetime.now(), "用户按下了注册")
+            st.session_state['stage'] = "用户注册"
+            return
         if not phone:
             st.error("手机号不能为空")
             return
@@ -83,8 +86,6 @@ if st.session_state['stage'] == '用户登录':
             return
         if phone and password:
             if args == "login":
-                # st.success("正在登录...")
-                # time.sleep(0.5)
                 st.session_state['user'] = phone
                 st.session_state['stage'] = "提交充电请求"
             elif args == "logon":
@@ -98,12 +99,55 @@ if st.session_state['stage'] == '用户登录':
     with col2:
         st.button("注册", on_click=login, args=("logon",))
 
+
+if st.session_state['stage'] == '用户注册':
+    st.markdown("## 智能充电桩充电系统 🎈")
+    st.markdown("#### 用户注册")
+    phone = st.text_input("手机号")
+    password = st.text_input("密码")
+    car = st.text_input("车牌号")
+    capacity = st.slider('电车电池总容量 (度)', 15.0, 60.0, 45.0, 0.1, key="capacity_form")
+
+
+    def login(args):
+        print(args)
+        if args == "login":
+            st.session_state['stage'] = "用户登录"
+            return
+        if not phone:
+            st.error("手机号不能为空")
+            return
+        if len(phone) != 11 or not phone.isdigit():
+            st.error("手机号格式不正确")
+            return
+        if not password:
+            st.error("密码不能为空")
+            return
+        if not car:
+            st.error("车牌号不能为空")
+            return
+        if capacity == 0:
+            st.error("电车电池容量不能为零")
+            return
+
+        st.success("正在登录...")
+        st.session_state['stage'] = "提交充电请求"
+        pass
+
+
+    col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
+    with col1:
+        st.button("登录", on_click=login, args=("login",))
+    with col2:
+        st.button("注册", on_click=login, args=("logon",))
+
+
+
 # 未提交充电请求阶段
 if st.session_state['stage'] == '提交充电请求':
     st.markdown("#### 提交充电请求")
     st.session_state['mode'] = st.radio("充电模式 👇", ('快充', '慢充'), help="快充 (30 度/小时), 慢充 (7 度/小时)")
     # , horizontal=True
-    st.session_state['capacity'] = st.slider('电车电池总容量 (度)', 15.0, 60.0, 45.0, 0.1)
     st.session_state['degree'] = st.slider('请求充电量 (度)', 0.0, st.session_state['capacity'], 0.0, 0.1)
     st.info(f"请确认您要提交的充电请求：{st.session_state['mode']} {st.session_state['degree']} (度)")
 
@@ -139,7 +183,6 @@ if st.session_state['stage'] == '等待叫号':
             else:
                 st.success(f"修改充电模式为:{st.session_state['mode_form']}")
                 st.session_state['mode'] = st.session_state['mode_form']
-
 
         with st.form(key='my_form1'):
             st.warning("是否要修改充电模式？修改充电模式将重新排队")
@@ -189,6 +232,7 @@ if st.session_state['stage'] == '等待叫号':
     st.markdown("##### 等待进度")
     st.session_state['wait_i'] = st.session_state['wait']
 
+
     def get_wait_num():
         wait = requests.get("http://10.112.241.69:8001/wait").json()['num']
         # wait = 10
@@ -217,6 +261,7 @@ if st.session_state['stage'] == '等待叫号':
 
     thread_state = 0
 
+
     def heart_beat():
         # 打印当前时间
         st.session_state['wait'] = get_wait_num()
@@ -228,9 +273,9 @@ if st.session_state['stage'] == '等待叫号':
             thread_state = 1
             timer.start()
 
+
     if thread_state == 0:
         heart_beat()
-
 
 if st.session_state['stage'] == "开始充电":
     st.markdown("#### 正在充电中")
@@ -261,7 +306,5 @@ if st.session_state['stage'] == "开始充电":
             i = degree
         my_bar.progress(i / degree)
 
-
 if st.session_state['stage'] == "结束充电并缴费":
     st.markdown("#### 结束充电并缴费")
-
