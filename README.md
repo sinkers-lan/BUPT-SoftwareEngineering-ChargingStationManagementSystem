@@ -26,4 +26,5 @@
 
 - fastapi
 - uvicorn[standard]
+- pyjwt
 
