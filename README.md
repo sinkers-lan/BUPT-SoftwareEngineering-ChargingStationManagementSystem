@@ -28,3 +28,29 @@
 - uvicorn[standard]
 - pyjwt
 
+
+
+## Quick Start
+
+**前端启动命令：**
+
+```
+streamlit run 用户充电.py
+```
+
+**后端启动程序：**
+
+直接在IDE内运行`app.py`
+
+或 使用命令行运行`app.py`：
+
+```
+python app.py
+```
+
+或 使用命令行启动命令：
+
+```
+uvicorn --reload main:app --host 0.0.0.0 --port 8002
+```
+

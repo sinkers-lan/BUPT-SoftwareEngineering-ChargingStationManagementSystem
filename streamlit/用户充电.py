@@ -1,5 +1,5 @@
 import random
-
+import json
 import re
 import streamlit as st
 import datetime
@@ -10,7 +10,9 @@ import threading
 # from streamlit_autorefresh import st_autorefresh
 from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx, RerunException
 
-HOST = "http://10.112.241.69:8003"
+# HOST = "http://10.112.241.69:8002"
+# HOST = "http://123.56.44.128:8002"
+HOST = "http://127.0.0.1:8002"
 # 设置全局变量
 if 'stage' not in st.session_state:
     st.session_state['stage'] = '用户登录'
@@ -28,6 +30,8 @@ if 'wait' not in st.session_state:
     st.session_state['wait'] = 20
 if 'wait_i' not in st.session_state:
     st.session_state['wait_i'] = 20
+if "token" not in st.session_state:
+    st.session_state['token'] = None
 
 # 设置不同充电阶段的进度侧边栏
 st.sidebar.markdown("## 使用流程")
@@ -84,8 +88,14 @@ if st.session_state['stage'] == '用户登录':
             st.error("密码不能为空")
             return
         if phone and password:
-            st.session_state['user'] = phone
-            st.session_state['stage'] = "提交充电请求"
+            my_json = {"user_name": phone, "password": password}
+            data = requests.post(url=HOST + "/user/login", data=json.dumps(my_json)).json()
+            if data['code'] == 1:
+                st.session_state['user'] = phone
+                st.session_state['token'] = data['data']['token']
+                st.session_state['stage'] = "提交充电请求"
+            else:
+                st.error(data['message'])
             pass
 
 
@@ -133,11 +143,16 @@ if st.session_state['stage'] == '用户注册':
         if capacity == 0:
             st.error("电车电池容量不能为零")
             return
-        st.session_state['user'] = phone
-        st.session_state['capacity'] = capacity
-        st.session_state['car'] = car
-        # st.success("正在登录...")
-        st.session_state['stage'] = "提交充电请求"
+        my_json = {"user_name": phone, "password": password, "car_id": car, "capacity": capacity}
+        data = requests.post(url=HOST + "/user/register", data=json.dumps(my_json)).json()
+        if data['code'] == 1:
+            st.session_state['user'] = phone
+            st.session_state['token'] = data['data']['token']
+            st.session_state['capacity'] = capacity
+            st.session_state['car'] = car
+            st.session_state['stage'] = "提交充电请求"
+        else:
+            st.error(data['message'])
         pass
 
 
@@ -151,8 +166,10 @@ if st.session_state['stage'] == '用户注册':
 # 未提交充电请求阶段
 if st.session_state['stage'] == '提交充电请求':
     st.markdown("#### 提交充电请求")
+    st.write("")
     st.session_state['mode'] = st.radio("充电模式 👇", ('快充', '慢充'), help="快充 (30 度/小时), 慢充 (7 度/小时)")
     # , horizontal=True
+    st.write("")
     st.session_state['degree'] = st.slider('请求充电量 (度)', 0.0, st.session_state['capacity'], 0.0, 0.1)
     st.info(f"请确认您要提交的充电请求：{st.session_state['mode']} {st.session_state['degree']} (度)")
 
@@ -171,7 +188,7 @@ if st.session_state['stage'] == '提交充电请求':
 # 等待叫号阶段
 if st.session_state['stage'] == '等待叫号':
     st.markdown("#### 等待叫号")
-    # hao = requests.get("http://10.112.241.69:8001/f7").json()
+
     st.write("")
     hao = 'f7'
 
@@ -184,22 +201,7 @@ if st.session_state['stage'] == '等待叫号':
 
 
     def change_mode_on_click():
-        def mode_form_callback():
-            if st.session_state['mode'] == st.session_state['mode_form']:
-                st.warning("没有修改充电模式")
-            else:
-                st.success(f"修改充电模式为:{st.session_state['mode_form']}")
-                st.session_state['mode'] = st.session_state['mode_form']
-
-        with st.form(key='my_form1'):
-            st.warning("是否要修改充电模式？修改充电模式将重新排队")
-            if st.session_state['mode'] == '快充':
-                idx = 0
-            else:
-                idx = 1
-            st.radio("修改充电模式 👇", ('快充', '慢充'), help="快充 (30 度/小时), 慢充 (7 度/小时)", index=idx,
-                     key="mode_form")
-            st.form_submit_button(label='确认修改', on_click=mode_form_callback)
+        st.session_state['stage'] = "修改充电模式"
 
 
     def change_degree_on_click():
@@ -283,6 +285,32 @@ if st.session_state['stage'] == '等待叫号':
 
     if thread_state == 0:
         heart_beat()
+
+if st.session_state['stage'] == "修改充电模式":
+    def mode_form_callback():
+        if st.session_state['mode'] == st.session_state['mode_form']:
+            st.warning("没有修改充电模式")
+        else:
+            st.success(f"修改充电模式为:{st.session_state['mode_form']}")
+            st.session_state['mode'] = st.session_state['mode_form']
+
+
+    with st.form(key='change_mode_form'):
+        st.warning("是否要修改充电模式？修改充电模式将重新排队")
+        if st.session_state['mode'] == '快充':
+            idx = 0
+        else:
+            idx = 1
+        st.radio("修改充电模式 👇", ('快充', '慢充'), help="快充 (30 度/小时), 慢充 (7 度/小时)", index=idx,
+                 key="mode_form")
+        st.form_submit_button(label='确认修改', on_click=mode_form_callback)
+
+
+    def return_on_click():
+        st.session_state['stage'] = "等待叫号"
+    st.button("返回")
+
+
 
 if st.session_state['stage'] == "开始充电":
     st.markdown("#### 正在充电中")
