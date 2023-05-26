@@ -36,6 +36,22 @@ if "token" not in st.session_state:
     st.session_state['token'] = None
 if "backward" not in st.session_state:
     st.session_state['backward'] = "提交充电请求"
+if "error_flag" not in st.session_state:
+    st.session_state['error_flag'] = False
+if "error_info" not in st.session_state:
+    st.session_state['error_info'] = ""
+if "warning_flag" not in st.session_state:
+    st.session_state['warning_flag'] = False
+if "warning_info" not in st.session_state:
+    st.session_state['warning_info'] = ""
+if "info_flag" not in st.session_state:
+    st.session_state['info_flag'] = False
+if "info_info" not in st.session_state:
+    st.session_state['info_info'] = ""
+if "success_flag" not in st.session_state:
+    st.session_state['success_flag'] = False
+if "success_info" not in st.session_state:
+    st.session_state['success_info'] = ""
 
 # 设置不同充电阶段的进度侧边栏
 st.sidebar.markdown("## 使用流程")
@@ -69,6 +85,20 @@ if st.session_state['stage'] == '结束充电并缴费':
     st.sidebar.success("等待叫号")
     st.sidebar.success("开始充电")
     st.sidebar.warning("结束充电并缴费")
+
+def show_info():
+    if st.session_state['error_flag']:
+        st.error(st.session_state['error_info'])
+    if st.session_state['warning_flag']:
+        st.warning(st.session_state['warning_info'])
+    if st.session_state['info_flag']:
+        st.info(st.session_state['info_info'])
+    if st.session_state['success_flag']:
+        st.success(st.session_state['success_info'])
+    st.session_state['error_flag'] = False
+    st.session_state['warning_flag'] = False
+    st.session_state['info_flag'] = False
+    st.session_state['success_flag'] = False
 
 # 未登录阶段
 if st.session_state['stage'] == '用户登录':
@@ -197,16 +227,16 @@ if "loop" not in st.session_state:
 
 
 def backward(default_stage: str):
-    st.write("十秒后返回叫号界面")
+    st.write("20秒后超时返回叫号界面")
     with st.empty():
         if st.session_state['loop']:
-            for seconds in range(0, 10):
-                st.write(f"⏳ {seconds} seconds have passed")
+            for seconds in range(0, 20):
+                st.write(f"⏳ {20 - seconds}")
                 time.sleep(1)
                 if not st.session_state['loop']:
                     break
             else:
-                st.write("✔️ Done!")
+                st.write("操作超时")
                 st.session_state['stage'] = default_stage
                 st.experimental_rerun()
         else:
@@ -217,7 +247,7 @@ def backward(default_stage: str):
 # 等待叫号阶段
 if st.session_state['stage'] == '等待叫号':
     st.markdown("#### 等待叫号")
-
+    show_info()
     # st.write("")
     st.session_state['wait'] = 'f7'
     show_hao(st.session_state['wait'], st.session_state['mode'], st.session_state['degree'])
@@ -278,7 +308,7 @@ if st.session_state['stage'] == '等待叫号':
 
     my_bar = st.progress(0)
     for percent_complete in range(100):
-        time.sleep(0.1)
+        time.sleep(0.2)
         my_bar.progress(percent_complete + 1)
     else:
         st.balloons()
@@ -292,12 +322,14 @@ if st.session_state['stage'] == "修改充电模式":
 
     def mode_form_callback():
         if st.session_state['mode'] == st.session_state['mode_form']:
-            st.warning("没有修改充电模式")
+            # st.warning("没有修改充电模式")
+            st.session_state['warning_flag'] = True
+            st.session_state['warning_info'] = "没有修改充电模式"
         else:
             # st.success(f"修改充电模式为:{st.session_state['mode_form']}")
             st.session_state['mode'] = st.session_state['mode_form']
-            st.session_state['backward'] = "等待叫号"
-            st.session_state['loop'] = False
+        st.session_state['backward'] = "等待叫号"
+        st.session_state['loop'] = False
 
 
     def return_on_click():
@@ -326,12 +358,14 @@ if st.session_state['stage'] == "修改充电量":
 
     def degree_form_callback():
         if st.session_state['degree'] == st.session_state['degree_form']:
-            st.warning("没有修改充电电量")
+            # st.warning("没有修改充电电量")
+            st.session_state['warning_flag'] = True
+            st.session_state['warning_info'] = "没有修改充电电量"
         else:
             # st.success(f"修改充电电量为:{st.session_state['degree_form']}")
             st.session_state['degree'] = st.session_state['degree_form']
-            st.session_state['backward'] = "等待叫号"
-            st.session_state['loop'] = False
+        st.session_state['backward'] = "等待叫号"
+        st.session_state['loop'] = False
 
 
     def return_on_click():
