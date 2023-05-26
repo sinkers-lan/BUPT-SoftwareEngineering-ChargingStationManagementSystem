@@ -32,8 +32,6 @@ if 'wait_i' not in st.session_state:
     st.session_state['wait_i'] = 20
 if "token" not in st.session_state:
     st.session_state['token'] = None
-if "state" not in st.session_state:
-    st.session_state['state'] = "waiting"
 
 # 设置不同充电阶段的进度侧边栏
 st.sidebar.markdown("## 使用流程")
@@ -190,36 +188,40 @@ def show_hao(hao_in, mode_in, degree_in):
     st.write("您的排队号码是:", hao_in, "，您的充电模式:", mode_in, "，您的请求充电量：", degree_in, " (度)")
 
 
+if "loop" not in st.session_state:
+    st.session_state['loop'] = False
 def backward():
     def return_on_click():
-        st.session_state['state'] = "waiting"
         # time.sleep(1)
-        st.session_state['stage'] = "等待叫号"
+        # st.session_state['stage'] = "等待叫号"
+        st.session_state['loop'] = False
 
     # col1, col2, col3 = st.columns(3)
     # with col2:
     st.button("返回", on_click=return_on_click)
     # with col1:
-    st.write("十秒后返回叫号界面")
-    st.session_state['state'] = "counting"
-    with st.empty():
-        for seconds in range(100):
-            st.write(f"⏳ {seconds} seconds have passed")
+    # st.write("十秒后返回叫号界面")
+    # with st.empty():
+    #     for seconds in range(100):
+    #         st.write(f"⏳ {seconds} seconds have passed")
+    #         time.sleep(0.1)
+    #         print(datetime.datetime.now())
+    #     else:
+    #         st.write("✔️ Done!")
+    #         st.session_state['stage'] = "等待叫号"
+    #         st.experimental_rerun()
+    my_bar1 = st.progress(0)
+
+    if st.session_state['loop']:
+        for percent_complete1 in range(0, 100, 2):
             time.sleep(0.1)
-            print(datetime.datetime.now())
-            if st.session_state['state'] != "counting":
+            my_bar1.progress(percent_complete1)
+            # print(datetime.datetime.now())
+            if not st.session_state['loop']:
                 break
-        st.write("✔️ Done!")
-        st.session_state['stage'] = "等待叫号"
-        st.experimental_rerun()
-    # my_bar1 = st.progress(0)
-    # st.session_state['state'] = "counting"
-    # for percent_complete1 in range(100):
-    #     time.sleep(0.1)
-    #     my_bar1.progress(percent_complete1 + 1)
-    #     print(datetime.datetime.now())
-    #     if st.session_state['state'] != "counting":
-    #         break
+
+    st.session_state['stage'] = "等待叫号"
+    st.experimental_rerun()
 
 
 # 等待叫号阶段
@@ -233,12 +235,12 @@ if st.session_state['stage'] == '等待叫号':
 
     def change_mode_on_click():
         st.session_state['stage'] = "修改充电模式"
-        st.session_state['state'] = "counting"
+        st.session_state['loop'] = True
 
 
     def change_degree_on_click():
         st.session_state['stage'] = "修改充电量"
-        st.session_state['state'] = "counting"
+        st.session_state['loop'] = True
 
 
     col1, col2, col3 = st.columns(3)
@@ -289,13 +291,10 @@ if st.session_state['stage'] == '等待叫号':
     # st.write("前车等待数量:" + str(st.session_state['wait']))
 
     my_bar = st.progress(0)
-    st.session_state['state'] = "asking"
     for percent_complete in range(100):
         time.sleep(0.1)
         my_bar.progress(percent_complete + 1)
         # print(datetime.datetime.now())
-        if st.session_state['state'] != "asking":
-            break
     else:
         st.balloons()
         st.session_state['stage'] = "准备充电"
@@ -312,7 +311,8 @@ if st.session_state['stage'] == "修改充电模式":
         else:
             st.success(f"修改充电模式为:{st.session_state['mode_form']}")
             st.session_state['mode'] = st.session_state['mode_form']
-            st.session_state['stage'] = "等待叫号"
+            # st.session_state['stage'] = "等待叫号"
+            st.session_state['loop'] = False
 
 
     with st.form(key='change_mode_form'):
@@ -338,7 +338,8 @@ if st.session_state['stage'] == "修改充电量":
         else:
             st.success(f"修改充电电量为:{st.session_state['degree_form']}")
             st.session_state['degree'] = st.session_state['degree_form']
-            st.session_state['stage'] = "等待叫号"
+            # st.session_state['stage'] = "等待叫号"
+            st.session_state['loop'] = False
 
 
     with st.form(key='change_degree_form'):
