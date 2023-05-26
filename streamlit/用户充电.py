@@ -1,6 +1,8 @@
 import random
 import json
 import re
+import signal
+
 import streamlit as st
 import datetime
 import time
@@ -32,6 +34,8 @@ if 'wait_i' not in st.session_state:
     st.session_state['wait_i'] = 20
 if "token" not in st.session_state:
     st.session_state['token'] = None
+if "backward" not in st.session_state:
+    st.session_state['backward'] = "提交充电请求"
 
 # 设置不同充电阶段的进度侧边栏
 st.sidebar.markdown("## 使用流程")
@@ -190,38 +194,29 @@ def show_hao(hao_in, mode_in, degree_in):
 
 if "loop" not in st.session_state:
     st.session_state['loop'] = False
+
+
 def backward():
     def return_on_click():
-        # time.sleep(1)
-        # st.session_state['stage'] = "等待叫号"
         st.session_state['loop'] = False
 
-    # col1, col2, col3 = st.columns(3)
-    # with col2:
-    st.button("返回", on_click=return_on_click)
-    # with col1:
-    # st.write("十秒后返回叫号界面")
-    # with st.empty():
-    #     for seconds in range(100):
-    #         st.write(f"⏳ {seconds} seconds have passed")
-    #         time.sleep(0.1)
-    #         print(datetime.datetime.now())
-    #     else:
-    #         st.write("✔️ Done!")
-    #         st.session_state['stage'] = "等待叫号"
-    #         st.experimental_rerun()
-    my_bar1 = st.progress(0)
+    col1, col2, col3 = st.columns(3)
+    with col2:
+        st.button("返回", on_click=return_on_click)
+    with col1:
+        st.write("十秒后返回叫号界面")
+        with st.empty():
+            if st.session_state['loop']:
+                for seconds in range(0, 10):
+                    st.write(f"⏳ {seconds} seconds have passed")
+                    time.sleep(1)
+                    # print(datetime.datetime.now())
+                    if not st.session_state['loop']:
+                        break
 
-    if st.session_state['loop']:
-        for percent_complete1 in range(0, 100, 2):
-            time.sleep(0.1)
-            my_bar1.progress(percent_complete1)
-            # print(datetime.datetime.now())
-            if not st.session_state['loop']:
-                break
-
-    st.session_state['stage'] = "等待叫号"
-    st.experimental_rerun()
+            st.write("✔️ Done!")
+            st.session_state['stage'] = st.session_state['backward']
+            st.experimental_rerun()
 
 
 # 等待叫号阶段
@@ -243,22 +238,19 @@ if st.session_state['stage'] == '等待叫号':
         st.session_state['loop'] = True
 
 
+    def cancel_on_click():
+        st.session_state['stage'] = "取消充电"
+        st.session_state['loop'] = True
+
+
     col1, col2, col3 = st.columns(3)
     with col1:
         change_mode = st.button("修改充电模式", on_click=change_mode_on_click)
     with col2:
         change_degree = st.button("修改充电量", on_click=change_degree_on_click)
     with col3:
-        cancel = st.button("取消本次充电")
-        if cancel:
-            def cancel_confirm_on_click():
-                st.session_state['stage'] = "提交充电请求"
-                # 取消叫号请求发送
+        cancel = st.button("取消本次充电", on_click=cancel_on_click)
 
-
-            st.warning("是否确认取消充电请求？取消充电请求本次排队号作废")
-            st.button("确定取消", on_click=cancel_confirm_on_click)
-            st.button("不取消")
 
     st.write("")
     st.markdown("##### 等待进度")
@@ -294,7 +286,6 @@ if st.session_state['stage'] == '等待叫号':
     for percent_complete in range(100):
         time.sleep(0.1)
         my_bar.progress(percent_complete + 1)
-        # print(datetime.datetime.now())
     else:
         st.balloons()
         st.session_state['stage'] = "准备充电"
@@ -309,9 +300,9 @@ if st.session_state['stage'] == "修改充电模式":
         if st.session_state['mode'] == st.session_state['mode_form']:
             st.warning("没有修改充电模式")
         else:
-            st.success(f"修改充电模式为:{st.session_state['mode_form']}")
+            # st.success(f"修改充电模式为:{st.session_state['mode_form']}")
             st.session_state['mode'] = st.session_state['mode_form']
-            # st.session_state['stage'] = "等待叫号"
+            st.session_state['backward'] = "等待叫号"
             st.session_state['loop'] = False
 
 
@@ -325,6 +316,7 @@ if st.session_state['stage'] == "修改充电模式":
                  key="mode_form")
         st.form_submit_button(label='确认修改', on_click=mode_form_callback)
 
+    # st.session_state['backward'] = "等待叫号"
     backward()
 
 if st.session_state['stage'] == "修改充电量":
@@ -336,20 +328,38 @@ if st.session_state['stage'] == "修改充电量":
         if st.session_state['degree'] == st.session_state['degree_form']:
             st.warning("没有修改充电电量")
         else:
-            st.success(f"修改充电电量为:{st.session_state['degree_form']}")
+            # st.success(f"修改充电电量为:{st.session_state['degree_form']}")
             st.session_state['degree'] = st.session_state['degree_form']
-            # st.session_state['stage'] = "等待叫号"
+            st.session_state['backward'] = "等待叫号"
             st.session_state['loop'] = False
 
 
     with st.form(key='change_degree_form'):
         st.info("修改充电模式不用重新排队。是否要修改充电电量？")
-        # capacity = st.slider('电车电池总容量 (度)', 15.0, 60.0, 45.0, 0.1, key="capacity_form")
         st.slider('请求充电量 (度)', 0.0, st.session_state['capacity'], st.session_state['degree'], 0.1,
                   key="degree_form")
         st.form_submit_button(label='确认修改', on_click=degree_form_callback)
 
+    # st.session_state['backward'] = "等待叫号"
     backward()
+
+
+if st.session_state['stage'] == "取消充电":
+    st.markdown("#### 等待叫号")
+    show_hao(st.session_state['wait'], st.session_state['mode'], st.session_state['degree'])
+
+
+    def cancel_confirm_on_click():
+        st.session_state['backward'] = "提交充电请求"
+        st.session_state['loop'] = False
+
+
+    st.warning("是否确认取消充电请求？取消充电请求本次排队号作废")
+    st.button("确定取消", on_click=cancel_confirm_on_click)
+
+    # st.session_state['backward'] = "等待叫号"
+    backward()
+
 
 if st.session_state['stage'] == "准备充电":
     st.markdown("#### 正在充电区等候")
