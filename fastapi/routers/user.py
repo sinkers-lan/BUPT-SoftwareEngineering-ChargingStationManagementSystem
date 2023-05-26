@@ -7,6 +7,7 @@ from typing import Optional
 
 from utils import utils
 from dao import user as user_dao
+from service import dispatch
 
 router = APIRouter(prefix="/user")
 
@@ -51,3 +52,20 @@ async def user_register(user: LogonUser):
 class LogoutUser(BaseModel):
     user_name: str
     password: str
+
+
+@router.post("/logout")
+async def user_register(user: LogoutUser):
+    pass
+
+
+class ChargingRequest(BaseModel):
+    car_id: str
+    request_amount: float
+    request_mode: str
+
+
+@router.post("/chargingRequest")
+async def user_register(charging_request: ChargingRequest):
+    
+    pass

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 
 class QInfo:
@@ -33,25 +33,25 @@ class QQueue:
     def pop(self):
         if self.len == 0:
             print("pop error")
-            return
+            return -1
         self.len -= 1
         return self.__q.pop()
 
     def push(self, q_info: QInfo):
         if self.len == self.max_len:
             print("push error")
-            return
+            return -1
         self.len += 1
         self.__q.append(q_info)
 
 
 class ChargingStationQueue(QQueue):
     def __init__(self, mode: str, name: str):
-        super().__init__(mode, 2)
+        super().__init__(mode, max_len=2)
 
 
 class ChargingStation:
-    def __init__(self, mode, name):
+    def __init__(self, mode: str, name: str):
         self.mode = mode
         self.name = name
         if mode == "快充":
@@ -67,6 +67,41 @@ class ChargingStation:
     def add_car(self, q_info: QInfo):
         self.q_queue.push(q_info)
 
+
+class ChargingAreaFastOrSlow:
+    def __init__(self, mode):
+        self.mode = mode
+        if mode == "快充":
+            self.charging_station_num = 2
+            self.charging_stations = [
+                ChargingStation(mode, "A"),
+                ChargingStation(mode, "B")
+            ]
+        else:
+            self.charging_station_num = 3
+            self.charging_stations = [
+                ChargingStation(mode, "C"),
+                ChargingStation(mode, "D"),
+                ChargingStation(mode, "E")
+            ]
+
+    def has_vacancy(self):
+        for station in self.charging_stations:
+            if station.get_queue_len() < 2:
+                return True, station.name
+        return False, None
+
+
+class ChargingAreal:
+    def __init__(self):
+        self.fast_area = ChargingAreaFastOrSlow("快充")
+        self.slow_area = ChargingAreaFastOrSlow("慢充")
+
+    def has_vacancy(self, mode):
+        if mode == "快充":
+            return self.fast_area.has_vacancy()
+        else:
+            return self.slow_area.has_vacancy()
 
 
 class WaitingQueue(QQueue):
@@ -95,19 +130,18 @@ class WaitingArea:
             return self.slow_queue.len
 
 
-
 class AllArea:
     def __init__(self):
-        self.A = ChargingStation("快充", "A")
-        self.B = ChargingStation("快充", "B")
-        self.C = ChargingStation("慢充", "C")
-        self.D = ChargingStation("慢充", "D")
-        self.E = ChargingStation("慢充", "E")
+        self.charging_area = ChargingAreal()
         self.waiting_area = WaitingArea()
         self.q_infos: List[QInfo] = []
 
-
     # def inquire_car_state(self, car_id):
 
-    def add_car(self, q_info: QInfo):
+    def waiting_area_add_car(self, q_info: QInfo):
         self.waiting_area.add_car(q_info)
+
+    def charging_is_vacancy(self, mode):
+        is_vacancy, pile_name = self.charging_area.has_vacancy(mode)
+
+    def
