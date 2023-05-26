@@ -233,8 +233,8 @@ def backward(default_stage: str):
             for seconds in range(0, 20):
                 st.write(f"⏳ {20 - seconds}")
                 time.sleep(1)
-                if not st.session_state['loop']:
-                    break
+                # if not st.session_state['loop']:
+                #     break
             else:
                 st.write("操作超时")
                 st.session_state['stage'] = default_stage
