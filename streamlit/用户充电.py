@@ -105,7 +105,7 @@ if st.session_state['stage'] == '用户登录':
     st.markdown("## 智能充电桩充电系统 🎈")
     st.markdown("#### 用户登录")
     phone = st.text_input("手机号")
-    password = st.text_input("密码")
+    password = st.text_input("密码", type="password")
 
 
     def login(args):
@@ -143,7 +143,7 @@ if st.session_state['stage'] == '用户注册':
     st.markdown("## 智能充电桩充电系统 🎈")
     st.markdown("#### 用户注册")
     phone = st.text_input("手机号")
-    password = st.text_input("密码")
+    password = st.text_input("密码", type="password")
     car = st.text_input("车牌号")
     capacity = st.slider('电车电池总容量 (度)', 15.0, 60.0, 45.0, 0.1, key="capacity_form")
 

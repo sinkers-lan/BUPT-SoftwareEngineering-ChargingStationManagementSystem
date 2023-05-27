@@ -1,23 +1,28 @@
 import sqlite3
 
-conn = sqlite3.connect('SoftwareEngineering.db')
-print("数据库打开成功")
-c = conn.cursor()
+
+# conn = sqlite3.connect('SoftwareEngineering.db')
+# print("数据库打开成功")
+# c = conn.cursor()
 # conn.close()
 
-# class UserDao:
-#     def __init__(self):
-#         """打开/创建数据库"""
-#         self.conn = sqlite3.connect('SoftwareEngineering.db')
-#         print("数据库打开成功")
-#         self.c = self.conn.cursor()
-#
-#     def close_db(self):
-#         self.conn.close()
+class UserDao:
+    def __init__(self):
+        """打开/创建数据库"""
+        self.conn = sqlite3.connect('SoftwareEngineering.db')
+        print("数据库打开成功")
+        self.c = self.conn.cursor()
+
+    def close_db(self):
+        self.conn.close()
+
+    def __del__(self):
+        self.conn.close()
 
 
-# dao = UserDao()
+dao = UserDao()
 """创建表"""
+
 
 #
 # c.execute('''CREATE TABLE user
@@ -37,7 +42,7 @@ c = conn.cursor()
 
 def login(user_name: str, hash_password: str):
     # 查看用户名对应的hashed密码
-    cursor = c.execute(f"select * from user where user_name = '{user_name}'")
+    cursor = dao.c.execute(f"select * from user where user_name = '{user_name}'")
     # conn.close()
     for row in cursor:
         if hash_password == row[2]:
@@ -74,19 +79,19 @@ def logon(user_name: str, hash_password: str, car_id: str, capacity: float) -> d
             "code": 0,
             "message": "用户名重复"
         }
-    cursor = c.execute(f"select * from user where car_id = '{car_id}'")
+    cursor = dao.c.execute(f"select * from user where car_id = '{car_id}'")
     for row in cursor:
         print("车牌号重复")
         return {
             "code": 0,
             "message": "车牌号重复"
         }
-    c.execute(f"INSERT INTO user (user_name,hash_password,car_id,capacity) \
+    dao.c.execute(f"INSERT INTO user (user_name,hash_password,car_id,capacity) \
            VALUES ('{user_name}', '{hash_password}', '{car_id}', {capacity} )")
     print("数据表插入成功")
-    conn.commit()
+    dao.conn.commit()
     user_id = 0
-    cursor = c.execute(f"select user_id from user where user_name = '{user_name}'")
+    cursor = dao.c.execute(f"select user_id from user where user_name = '{user_name}'")
     for row in cursor:
         user_id = row[0]
     # conn.close()
