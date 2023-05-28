@@ -1,6 +1,7 @@
 import datetime
 import time
 import threading
+from typing import Tuple
 
 
 class VirtualTime:
@@ -52,31 +53,40 @@ class VirtualTime:
 virtual_time = VirtualTime()
 
 
-class VirtualTimeCallback:
-    def __init__(self, virtual_time: VirtualTime, specified_time, callback):
+class VirtualTimer:
+    def __init__(self, virtual_time: VirtualTime, specified_time, callback, args: Tuple):
         self.virtual_time = virtual_time
         self.specified_time = specified_time
         self.callback = callback
+        self.args = args
+        self.running = False
 
     def start(self):
         def check_time_and_callback():
-            while True:
+            while self.running:
                 current_virtual_time = self.virtual_time.get_current_time()
                 if current_virtual_time >= self.specified_time:
-                    self.callback()
+                    self.callback(*self.args)
                     break
                 time.sleep(0.1)
 
         if not virtual_time.is_start:
             raise Exception('Virtual time has not yet started')
+        self.running = True
         self.thread = threading.Thread(target=check_time_and_callback)
         self.thread.start()
 
+    def terminate(self):
+        if not self.running:
+            raise Exception("Virtual timer not running")
+        self.running = False
 
-def start_timer(delay, callback):
+
+def start_timer(delay, callback, args):
     specified_time = virtual_time.get_current_time() + delay
-    virtual_time_cb = VirtualTimeCallback(virtual_time, specified_time, callback)
-    virtual_time_cb.start()
+    virtual_timer = VirtualTimer(virtual_time, specified_time, callback, args)
+    virtual_timer.start()
+    return virtual_timer
 # if __name__ == "__main__":
 #     virtual_time.start()
 #     virtual_time.moderate()

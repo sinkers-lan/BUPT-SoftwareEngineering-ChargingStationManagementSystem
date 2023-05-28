@@ -17,6 +17,7 @@ class UserDao:
         self.conn.close()
 
     def __del__(self):
+        print("数据库关闭成功")
         self.conn.close()
 
 
