@@ -1,10 +1,43 @@
-from domain.user import AllArea, QInfo, StateDict, UserState
+from domain.user import AllArea, QInfo, StateDict, UserState, ModeDict
 
 
 class Dispatch:
     def __int__(self):
         self.area = AllArea()
         self.state_dict = StateDict()
+        self.mode_dict = ModeDict()  # 还没有给对所有操作添加对模式字典的修改
+
+    def get_car_state(self, car_id):
+        car_state = self.state_dict.inquire_car_state(car_id)
+        car_position = None
+        queue_num = None
+        request_time = None
+        pile_id = None
+        if car_state == UserState.free:
+            car_state = UserState.free.value
+        elif car_state == UserState.waiting:
+            car_state = UserState.waiting.value
+            mode = self.mode_dict.inquire_car_mode(car_id)
+            car_position = self.area.waiting_area.get_your_len(mode, car_id)
+            queue_num = self.area.waiting_area.get_queue_len(mode)
+            q_info = self.area.waiting_area.get_your_info(mode, car_id)
+            request_time = q_info.request_time
+        elif car_state == UserState.waiting_for_charging:
+            car_state = UserState.waiting_for_charging.value
+            mode = self.mode_dict.inquire_car_mode(car_id)
+            pile_id = self.area.charging_area.get_your_pile(mode, car_id)
+            car_position = self.area.charging_area.get_your_len(mode, car_id, pile_id)
+            queue_num = self.area.charging_area.get_all_len(mode, pile_id)
+            request_time = self.area.charging_area.
+        return {
+            "car_state": car_state,
+            "car_position": car_position,
+            "queue_num": queue_num,
+            "request_time": request_time,
+            "pile_id": pile_id
+        }
+
+
 
     def new_car_come(self, user_id, car_id, mode, degree):
         q_info = QInfo(mode=mode, user_id=user_id, car_id=car_id, degree=degree)
@@ -28,6 +61,7 @@ class Dispatch:
     def a_car_finish(self, pile_id, mode, car_id):
         # 由充电桩发起
         self.state_dict.change_car_state(car_id, state=UserState.end)
+        self.area.charging_area.pop_car_pile_dict(mode, car_id)
         # 如果有等候区有匹配模式待叫号的车辆
         if self.area.waiting_area.has_car(mode):
             # 获取到最先的用户,并出队列

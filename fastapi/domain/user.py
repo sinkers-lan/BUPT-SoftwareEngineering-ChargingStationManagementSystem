@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
 from utils.my_time import virtual_time
 import utils.my_time as my_time
 from enum import Enum
@@ -22,21 +22,51 @@ class PileState(Enum):
     damage = "损坏"
 
 
+class Key(Enum):
+    your_position = "car_position"
+    user_state = "car_state"
+    queue_len = "queue_num"
+    request_time = "request_time"
+    pile_id = "pile_id"
+    bill_id = "bill_id"
+
+
+class ChargingInfo:
+    def __init__(self):
+        self.charging_info: Dict[str, Dict[Key, Optional]] = {}
+
+    def add_car(self, car_id):
+        self.charging_info[car_id] = {}
+
+    def del_car(self, car_id):
+        self.charging_info.pop(car_id)
+
+
 class StateDict:
     def __init__(self):
-        self.state_dict: Dict[str: UserState] = {}
+        self.state_dict: Dict[str, UserState] = {}
 
     def inquire_car_state(self, car_id):
-        self.state_dict.get(car_id, None)
+        self.state_dict.get(car_id, UserState.free)
 
     def change_car_state(self, car_id, state: UserState):
-        # if self.inquire_car_state(car_id) == -1:
-        #     print("该车还没有设置状态")
-        #     return -1
         self.state_dict[car_id] = state
 
     def del_car_state(self, car_id):
         self.state_dict.pop(car_id)
+
+class ModeDict:
+    def __int__(self):
+        self.mode_dict: Dict[str, str] = {}
+
+    def inquire_car_mode(self, car_id):
+        self.mode_dict.get(car_id, -1)
+
+    def add_car_mode(self, car_id, mode):
+        self.mode_dict[car_id] = mode
+
+    def del_car_mode(self, car_id):
+        self.mode_dict.pop(car_id)
 
 
 class QInfo:
@@ -51,6 +81,10 @@ class QInfo:
         else:
             speed = 7.0
         self.during = (degree / speed) * 60 * 60
+        self.queue_num = ""
+
+    def assign_queue_num(self, queue_num: str):
+        self.queue_num = queue_num
 
 
 class QQueue:
@@ -66,6 +100,12 @@ class QQueue:
             if q_info.car_id == car_id:
                 return i
             i += 1
+        raise Exception("Can't find your car in this queue")
+
+    def get_your_info(self, car_id):
+        for q_info in self.q:
+            if q_info.car_id == car_id:
+                return q_info
         raise Exception("Can't find your car in this queue")
 
     def pop(self):
@@ -139,6 +179,9 @@ class ChargingStation:
     def get_queue_len(self):
         return self.q_queue.len
 
+    def get_your_len(self, car_id):
+        return self.q_queue.get_your_position(car_id)
+
     def add_car(self, q_info: QInfo) -> UserState:
         self.q_queue.push(q_info)
         if self.q_queue.len == 1:
@@ -170,6 +213,7 @@ class ChargingAreaFastOrSlow:
             keys = [i * 10 + 1 for i in range(1, config.TrickleChargingPileNum + 1)]
         values = [ChargingStation(mode, i) for i in keys]
         self.pile_dict = dict(zip(keys, values))
+        self.car_pile_dict: Dict[str, int] = {}
 
     def has_vacancy(self):
         for station in self.pile_dict.values():
@@ -178,9 +222,11 @@ class ChargingAreaFastOrSlow:
         return False
 
     def add_car(self, pile_id, q_info: QInfo):
+        self.car_pile_dict[q_info.car_id] = pile_id
         return self.pile_dict[pile_id].add_car(q_info)
 
     def end_charging(self, car_id):
+        pass
 
     def dispatch(self):
         """
@@ -189,7 +235,7 @@ class ChargingAreaFastOrSlow:
         如果有预计结束时间重复的充电桩，只会给出其中一个充电桩的编号。
         :return: 充电桩编号
         """
-        end_time_dict =  dict([(pile.get_end_time(), pile.pile_id) for pile in self.pile_dict.values() if pile.has_vacancy()])
+        end_time_dict = dict([(pile.get_end_time(), pile.pile_id) for pile in self.pile_dict.values() if pile.has_vacancy()])
         earliest_end_time = min(end_time_dict.values())
         return end_time_dict[earliest_end_time]
 
@@ -199,7 +245,6 @@ class ChargingArea:
     def __init__(self):
         self.fast_area = ChargingAreaFastOrSlow("快充")
         self.slow_area = ChargingAreaFastOrSlow("慢充")
-        self.info = {}
 
     def has_vacancy(self, mode):
         if mode == "快充":
@@ -219,9 +264,29 @@ class ChargingArea:
         else:
             return self.slow_area.dispatch()
 
-    def find_car(self, car_id):
-        # 找到mode和pile_id
-        pass
+    def pop_car_pile_dict(self, mode, car_id):
+        if mode == "快充":
+            return self.fast_area.car_pile_dict.pop(car_id)
+        else:
+            return self.slow_area.car_pile_dict.pop(car_id)
+
+    def get_your_pile(self, mode, car_id):
+        if mode == "快充":
+            return self.fast_area.car_pile_dict.get(car_id)
+        else:
+            return self.slow_area.car_pile_dict.get(car_id)
+
+    def get_your_len(self, mode, car_id, pile_id):
+        if mode == "快充":
+            return self.fast_area.pile_dict[pile_id].get_your_len(car_id)
+        else:
+            return self.slow_area.pile_dict[pile_id].get_your_len(car_id)
+
+    def get_all_len(self, mode, pile_id):
+        if mode == "快充":
+            return self.fast_area.pile_dict[pile_id].q_queue.len
+        else:
+            return self.slow_area.pile_dict[pile_id].q_queue.len
 
 
 class WaitingQueue(QQueue):
@@ -236,19 +301,21 @@ class WaitingArea:
         self.slow_queue = WaitingQueue("慢充")
         self.max_len = config.WaitingAreaSize
         self.all_len = 0
+        self.fast_queue_num = 1
+        self.slow_queue_num = 1
 
     def add_car(self, q_info: QInfo):
-        # fast_len = self.fast_queue.len
-        # slow_len = self.slow_queue.len
         if self.all_len >= self.max_len:
             raise Exception("Could not add car into waiting area")
         self.all_len += 1
         if q_info.mode == "快充":
+            q_info.assign_queue_num("F" + str(self.fast_queue_num))
+            self.fast_queue_num += 1
             self.fast_queue.push(q_info)
-            return self.fast_queue.len
         else:
+            q_info.assign_queue_num("T" + str(self.slow_queue_num))
+            self.slow_queue_num += 1
             self.slow_queue.push(q_info)
-            return self.slow_queue.len
 
     def has_vacancy(self):
         return self.all_len < self.max_len
@@ -271,6 +338,23 @@ class WaitingArea:
         else:
             return self.slow_queue.q[0]
 
+    def get_your_len(self, mode, car_id):
+        if mode == "快充":
+            return self.fast_queue.get_your_position(car_id)
+        else:
+            return self.slow_queue.get_your_position(car_id)
+
+    def get_queue_len(self, mode):
+        if mode == "快充":
+            return self.fast_queue.len
+        else:
+            return self.fast_queue.len
+
+    def get_your_info(self, mode, car_id):
+        if mode == "快充":
+            return self.fast_queue.get_your_info(car_id)
+        else:
+            return self.slow_queue.get_your_info(car_id)
 
 
 class AllArea:
