@@ -5,7 +5,7 @@ from utils.my_time import virtual_time
 class Dispatch:
     def __int__(self):
         self.area = AllArea()
-        self.info = charging_info
+        self.info: ChargingInfo = charging_info
 
     def get_car_state(self, car_id):
         car_state = self.info.get_car_state(car_id)
@@ -17,12 +17,12 @@ class Dispatch:
             car_state = UserState.free.value
         elif car_state == UserState.waiting:
             car_state = UserState.waiting.value
-            car_position = self.info.get_car_state(car_id)
+            car_position = self.area.waiting_area.get_car_position(car_id)
             queue_num = self.info.get_queue_num(car_id)
             request_time = self.info.get_request_time(car_id)
         else:
             car_state = UserState.waiting_for_charging.value
-            car_position = self.info.get_car_position(car_id)
+            car_position = self.area.charging_area.get_your_position(car_id)
             queue_num = self.info.get_queue_num(car_id)
             request_time = self.info.get_request_time(car_id)
             pile_id = self.info.get_pile_id(car_id)
@@ -75,7 +75,7 @@ class Dispatch:
         # 用户在不同区做不同处理
         state = self.info.get_car_state(car_id)
         if state == UserState.end:
-            return {"code": -1, "message": "充电已结束"}
+            return {"code": 0, "message": "充电已结束"}
         elif state == UserState.charging:
             # 结束充电
             mode = self.info.get_mode(car_id)
@@ -85,7 +85,25 @@ class Dispatch:
             # 结束充电
             self.area.charging_area.end_charging(mode, car_id)
         else:
-            return {"code": -1, "message": "用户不在充电，非法操作"}
+            return {"code": 0, "message": "用户不在充电，非法操作"}
+
+    def change_degree(self, car_id, degree):
+        state = self.info.get_car_state(car_id)
+        if state != UserState.waiting:
+            return {"code": 0, "message": "用户不在等候区，无法修改充电量"}
+        self.area.waiting_area.change_degree(car_id, degree)
+        return {"code": 1, "message": "请求成功"}
+
+    def change_mode(self, car_id, mode):
+        state = self.info.get_car_state(car_id)
+        if state != UserState.waiting:
+            return {"code": 0, "message": "用户不在等候区，无法修改充模式"}
+        old_mode = self.info.get_mode(car_id)
+        if old_mode == mode:
+            return {"code": 0, "message": "充电模式没有改变"}
+        self.area.waiting_area.change_mode(car_id, mode)
+        self.info.set_mode(car_id, mode)
+        return {"code": 1, "message": "请求成功"}
 
 
 dispatch = Dispatch()

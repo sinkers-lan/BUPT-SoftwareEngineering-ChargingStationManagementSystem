@@ -127,7 +127,7 @@ class ChangeChargingAmount(BaseModel):
 
 
 @router.post("/changeChargingAmount")
-async def change_charging_mode(parm: ChangeChargingAmount):
+async def change_charging_amount(parm: ChangeChargingAmount):
     return {
         "code": 1,
         "message": "请求成功"
