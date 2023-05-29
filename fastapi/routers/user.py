@@ -56,7 +56,7 @@ class LogoutUser(BaseModel):
 
 
 @router.post("/logout")
-async def user_register(user: LogoutUser):
+async def log_out(user: LogoutUser):
     pass
 
 

@@ -60,6 +60,8 @@ class Dispatch:
         # 由充电桩发起
         # 改变用户状态
         self.info.set_car_state(car_id, UserState.end)
+        # 调用充电桩的自动结束充电接口
+        self.area.charging_area.end_charging(car_id)
         # 如果有等候区有匹配模式待叫号的车辆
         if self.area.waiting_area.has_car(mode):
             # 获取到最先的用户,并出队列
@@ -67,7 +69,7 @@ class Dispatch:
             # 放入充电桩队列
             user_state = self.area.charging_area.add_car(mode, pile_id, q_info)
             # 改变用户状态
-            self.info.set_car_state(car_id, user_state)
+            self.info.set_car_state(q_info.car_id, user_state)
 
     def user_terminate(self, car_id):
         # 用户在不同区做不同处理
@@ -80,8 +82,10 @@ class Dispatch:
             self.area.charging_area.end_charging(mode, car_id)
             # 改变用户状态
             self.info.set_car_state(car_id, UserState.end)
-            # 需要通过car_id找到mode和pile_name
-            pass
-
+            # 结束充电
+            self.area.charging_area.end_charging(mode, car_id)
+        else:
+            return {"code": -1, "message": "用户不在充电，非法操作"}
+    
 
 dispatch = Dispatch()

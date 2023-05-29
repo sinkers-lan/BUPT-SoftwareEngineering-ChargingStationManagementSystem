@@ -46,6 +46,8 @@ class ChargingInfo:
         return self.charging_info[car_id][Key.car_position]
 
     def get_car_state(self, car_id):
+        if self.charging_info.get(car_id, -1) == -1:
+            return UserState.free
         return self.charging_info[car_id][Key.car_state]
 
     def get_queue_num(self, car_id):
@@ -174,20 +176,23 @@ class ChargingStation:
         else:
             raise Exception("You are not the first one in the charging queue, can not start charging")
 
+    # 由用户或系统发起
     def end_charging(self, car_id):
-        # 更改预计排队时间
-        if self.q_queue.len == 0:
-            self.end_time = None
-        self.state = PileState.free
+        # 检查是否是正确的操作
         first_info = self.q_queue.q[0]
-        if car_id == first_info.car_id and self.state == PileState.using:
-            # 手动结束充电
-            self.timer.terminate()
-            self.state = PileState.free
-        elif car_id != first_info.car_id:
+        if car_id != first_info.car_id:
             raise Exception("You are not the fist one in the charging queue, can not end charging")
         elif self.state == PileState.using:
             raise Exception("Pile is not charging, can not end charging")
+        # 结束定时器
+        self.timer.terminate()
+        # 改变充电桩状态
+        self.state = PileState.free
+        # 更改预计排队时间
+        if self.q_queue.len == 0:
+            self.end_time = None
+        # 出队列
+        self.q_queue.pop()
 
     def get_end_time(self):
         return self.end_time
@@ -218,7 +223,8 @@ class ChargingAreaFastOrSlow:
         return self.pile_dict[pile_id].add_car(q_info)
 
     def end_charging(self, car_id):
-        pass
+        pile_id = charging_info.get_pile_id(car_id)
+        self.pile_dict[pile_id].end_charging(car_id)
 
     def dispatch(self):
         """
@@ -256,7 +262,8 @@ class ChargingArea:
         else:
             return self.slow_area.dispatch()
 
-    def end_charging(self, mode, car_id):
+    def end_charging(self, car_id):
+        mode = charging_info.get_mode(car_id)
         if mode == "快充":
             self.fast_area.end_charging(car_id)
         else:
