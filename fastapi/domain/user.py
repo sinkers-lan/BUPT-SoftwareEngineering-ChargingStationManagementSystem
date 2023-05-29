@@ -127,50 +127,8 @@ class QQueue:
 
 
 class ChargingStationQueue(QQueue):
-    def __init__(self, mode: str, pile_id: int):
+    def __init__(self, mode: str):
         super().__init__(mode, max_len=config.ChargingQueueLen)
-        self.end_time = None
-        self.state = PileState.free
-        self.pile_id = pile_id
-        self.timer: Optional[VirtualTimer] = None
-
-    def pop(self):
-        if self.len == 0:
-            self.end_time = None
-        self.state = PileState.free
-        super().pop()  # 怎么生成详单
-
-    def push(self, q_info: QInfo):
-        # 需要设置队列的结束时间
-        if self.len == 0:  # 队伍为空
-            self.end_time = virtual_time.get_current_time() + q_info.during
-        elif self.len == 1:
-            self.end_time += q_info.during
-        super().push(q_info)
-
-    def start_charging(self, car_id):
-        first_info = self.q[0]
-        if car_id == first_info.car_id:
-            waiting_time = 0
-            for q_info in self.q:
-                waiting_time += q_info.during
-            self.end_time = virtual_time.get_current_time() + waiting_time
-            self.state = PileState.using
-            self.timer = my_time.start_timer(first_info.during, callback=dispatch.a_car_finish,
-                                             args=(self.pile_id, self.mode, car_id))
-        else:
-            return -1
-
-    def end_charging(self, car_id):
-        first_info = self.q[0]
-        if car_id == first_info.car_id and self.state == PileState.using:
-            # 手动结束充电
-            self.timer.terminate()
-            self.state = PileState.free
-        elif car_id != first_info.car_id:
-            raise Exception("You are not the fist one in the charging queue, can not end charging")
-        elif self.state == PileState.using:
-            raise Exception("Pile is not charging, can not end charging")
 
 
 class ChargingStation:
@@ -181,23 +139,58 @@ class ChargingStation:
             self.speed = 30.0
         else:
             self.speed = 7.0
-        self.q_queue = ChargingStationQueue(mode, pile_id)
+        self.q_queue = ChargingStationQueue(mode)
+        self.end_time: Optional[float] = None
+        self.state: PileState = PileState.free
+        self.timer: Optional[VirtualTimer] = None
 
     def add_car(self, q_info: QInfo) -> UserState:
+        # 设置队列的结束时间
+        if self.q_queue.len == 0:
+            self.end_time = virtual_time.get_current_time() + q_info.during
+        elif 0 < self.q_queue.len < self.q_queue.max_len:
+            self.end_time += q_info.during
+        else:
+            raise Exception("The queue is full, can not add car into this charging station area")
         self.q_queue.push(q_info)
+        # 返回是否允许充电
         if self.q_queue.len == 1:
             return UserState.allow
         else:
             return UserState.waiting_for_charging
 
     def start_charging(self, car_id):
-        self.q_queue.start_charging(car_id)
+        first_info = self.q_queue.q[0]
+        if car_id == first_info.car_id:
+            self.state = PileState.using
+            # 更改预计排队时间
+            waiting_time = 0
+            for q_info in self.q_queue.q:
+                waiting_time += q_info.during
+            self.end_time = virtual_time.get_current_time() + waiting_time
+            # 启动定时器
+            self.timer = my_time.start_timer(first_info.during, callback=dispatch.a_car_finish,
+                                             args=(self.pile_id, self.mode, car_id))
+        else:
+            raise Exception("You are not the first one in the charging queue, can not start charging")
 
     def end_charging(self, car_id):
-        self.q_queue.start_charging(car_id)
+        # 更改预计排队时间
+        if self.q_queue.len == 0:
+            self.end_time = None
+        self.state = PileState.free
+        first_info = self.q_queue.q[0]
+        if car_id == first_info.car_id and self.state == PileState.using:
+            # 手动结束充电
+            self.timer.terminate()
+            self.state = PileState.free
+        elif car_id != first_info.car_id:
+            raise Exception("You are not the fist one in the charging queue, can not end charging")
+        elif self.state == PileState.using:
+            raise Exception("Pile is not charging, can not end charging")
 
     def get_end_time(self):
-        return self.q_queue.end_time
+        return self.end_time
 
     def has_vacancy(self):
         return self.q_queue.len < self.q_queue.max_len
