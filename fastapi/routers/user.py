@@ -1,13 +1,14 @@
 # Fastapi
+import datetime
+
 from fastapi import APIRouter
 
 # 用于FastAPI解析json格式数据
 from pydantic import BaseModel
-from typing import Optional
 
 from utils import utils
 from dao import user as user_dao
-from service import dispatch
+from domain.user import UserState
 
 router = APIRouter(prefix="/user")
 
@@ -67,5 +68,176 @@ class ChargingRequest(BaseModel):
 
 @router.post("/chargingRequest")
 async def user_register(charging_request: ChargingRequest):
-    
+    return {
+        "code": 1,
+        "message": "请求成功",
+        "data": {
+            "car_position": 2,
+            "car_state": UserState.waiting.value,
+            "queue_num": 4,
+            "request_time": datetime.datetime.now()
+        }
+    }
     pass
+
+
+class CarId(BaseModel):
+    car_id: str
+
+
+@router.post("/queryCarState")
+async def query_car_state(parm: CarId):
+    car_id = parm.car_id
+    return {
+        "code": 1,
+        "message": "请求成功",
+        "data": {
+            "car_position": 2,
+            "car_state": UserState.waiting.value,
+            "queue_num": "F4",
+            "request_time": datetime.datetime.now(),
+            "pile_id": 1,
+            "request_mode": "快充"
+        }
+    }
+
+
+class ChangeChargingMode(BaseModel):
+    car_id: str
+    request_mode: str
+
+
+@router.post("/changeChargingMode")
+async def change_charging_mode(parm: ChangeChargingMode):
+    return {
+        "code": 1,
+        "message": "请求成功",
+        "data": {
+            "car_position": 2,
+            "car_state": UserState.waiting.value,
+            "queue_num": 4,
+            "request_time": datetime.datetime.now()
+        }
+    }
+
+
+class ChangeChargingAmount(BaseModel):
+    car_id: str
+    request_amount: float
+
+
+@router.post("/changeChargingAmount")
+async def change_charging_mode(parm: ChangeChargingAmount):
+    return {
+        "code": 1,
+        "message": "请求成功"
+    }
+
+
+@router.post("/beginCharging")
+async def begin_charging(parm: CarId):
+    return {
+        "code": 1,
+        "message": "开始充电"
+    }
+
+
+@router.post("/getChargingState")
+async def get_charging_state(parm: CarId):
+    return {
+        "code": 1,
+        "message": "请求成功",
+        "data": {
+            "car_id": "京...",
+            "bill_date": "YYYY-MM-DD",
+            "bill_id": 1,
+            "pile_id": 20,
+            "charge_amount": 27.0,
+            "charge_duration": 1.5,
+            "start_time": datetime.datetime.now(),
+            "end_time": datetime.datetime.now(),
+            "total_charge_fee": 1.1,
+            "total_service_fee": 1.1,
+            "total_fee": 1.1
+        }
+    }
+
+
+@router.post("/endCharging")
+async def end_charging(parm: CarId):
+    return {
+        "code": 1,
+        "message": "充电结束"
+    }
+
+
+class ChangeCapacity(BaseModel):
+    car_id: str
+    car_capacity: float
+
+
+@router.post("/changeCapacity")
+async def change_capacity(parm: ChangeCapacity):
+    return {
+        "code": 1,
+        "message": "修改成功",
+        "data": {
+            "car_capacity": 34.99
+        }
+    }
+
+
+class GetTotalBill(BaseModel):
+    car_id: str
+    bill_date: datetime.date
+
+
+@router.post("/getTotalBill")
+async def get_total_bill(pram: GetTotalBill):
+    return {
+        "code": 1,
+        "message": "查询成功",
+        "data": {
+            "bill_list": [
+                {
+                    "car_id": "京...",
+                    "bill_date": "YYYY-MM-DD",
+                    "bill_id": 1,
+                    "pile_id": 20,
+                    "charge_amount": 27.0,
+                    "charge_duration": 1.5,
+                    "start_time": datetime.datetime.now(),
+                    "end_time": datetime.datetime.now(),
+                    "total_charge_fee": 1.1,
+                    "total_service_fee": 1.1,
+                    "total_fee": 1.1
+                },
+                {}
+            ]
+        }
+    }
+
+
+class BillId(BaseModel):
+    bill_id: str
+
+
+@router.post("/getDetailBill")
+async def get_detail_bill(pram: BillId):
+    return {
+        "code": 1,
+        "message": "查询成功",
+        "data": {
+            "car_id": "京...",
+            "bill_date": "YYYY-MM-DD",
+            "bill_id": 1,
+            "pile_id": 20,
+            "charge_amount": 27.0,
+            "charge_duration": 1.5,
+            "start_time": datetime.datetime.now(),
+            "end_time": datetime.datetime.now(),
+            "total_charge_fee": 1.1,
+            "total_service_fee": 1.1,
+            "total_fee": 1.1
+        }
+    }
