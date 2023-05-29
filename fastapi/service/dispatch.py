@@ -1,4 +1,4 @@
-from domain.user import AllArea, QInfo, UserState, charging_info
+from domain.user import *
 from utils.my_time import virtual_time
 
 
@@ -86,6 +86,6 @@ class Dispatch:
             self.area.charging_area.end_charging(mode, car_id)
         else:
             return {"code": -1, "message": "用户不在充电，非法操作"}
-    
+
 
 dispatch = Dispatch()
