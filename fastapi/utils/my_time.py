@@ -36,7 +36,14 @@ class VirtualTime:
         if not self.is_start:
             raise Exception('Virtual time has not yet started')
         dt = datetime.datetime.fromtimestamp(self.current_virtual_time)
-        formatted_time = dt.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]  # 去除微秒后的后缀三位
+        formatted_time = dt.strftime("%Y-%m-%d %H:%M:%S.%f")[:-4]  # 去除微秒后的后缀4位
+        return formatted_time
+
+    def get_current_date(self):
+        if not self.is_start:
+            raise Exception('Virtual time has not yet started')
+        dt = datetime.datetime.fromtimestamp(self.current_virtual_time)
+        formatted_time = dt.strftime("%Y-%m-%d")
         return formatted_time
 
     def accelerate(self):
