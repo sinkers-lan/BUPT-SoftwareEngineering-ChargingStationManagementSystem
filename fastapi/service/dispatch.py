@@ -6,7 +6,7 @@ class Dispatch:
     def __int__(self):
         self.area = AllArea()
         self.info: ChargingInfo = charging_info
-        self.q_info_factory = QInfoFactory()
+        self.q_info_factory: QInfoFactory = q_info_factory
 
     def get_car_state(self, car_id):
         car_state = self.info.get_car_state(car_id)
@@ -69,12 +69,7 @@ class Dispatch:
             }
         }
 
-    def a_car_finish(self, pile_id, mode, car_id):
-        # 由充电桩发起
-        # 改变用户状态
-        self.info.set_car_state(car_id, UserState.end)
-        # 调用充电桩的自动结束充电接口
-        self.area.charging_area.end_charging(car_id)
+    def __call_out(self, pile_id, mode):
         # 如果有等候区有匹配模式待叫号的车辆
         if self.area.waiting_area.has_car(mode):
             # 获取到最先的用户,并出队列
@@ -84,22 +79,42 @@ class Dispatch:
             # 改变用户状态
             self.info.set_car_state(q_info.car_id, user_state)
 
-    def user_terminate(self, car_id):  # 需要和取消充电合并
+    def a_car_finish(self, pile_id, mode, car_id):
+        # 由充电桩发起
+        # 改变用户状态
+        self.info.set_car_state(car_id, UserState.end)
+        # 调用充电桩的自动结束充电接口
+        self.area.charging_area.end_charging(car_id)
+        # 叫号
+        self.__call_out(pile_id, mode)
+
+    def user_terminate(self, car_id):  # 和取消充电合并
         # 用户在不同区做不同处理
         state = self.info.get_car_state(car_id)
         if state == UserState.end:
             return {"code": 0, "message": "充电已结束"}
         elif state == UserState.charging:
             # 结束充电
-            mode = self.info.get_mode(car_id)
-            self.area.charging_area.end_charging(mode, car_id)  # 线程不安全
+            self.area.charging_area.end_charging(car_id)  # 线程是安全的，因为如果是定时器线程结束充电，会先改变用户状态
             # 改变用户状态
             self.info.set_car_state(car_id, UserState.end)
-            # 结束充电
-            self.area.charging_area.end_charging(mode, car_id)  # 检查到这儿
+            # 叫号
+            pile_id = self.info.get_pile_id(car_id)
+            mode = self.info.get_mode(car_id)
+            self.__call_out(pile_id, mode)
             return {"code": 1, "message": "成功结束充电"}
-        else:
-            return {"code": 0, "message": "用户不在充电，非法操作"}
+        elif state == UserState.waiting:
+            # 取消充电
+            self.area.waiting_area.cancel_waiting(car_id)
+            # 改变用户状态
+            self.info.del_car(car_id)
+            return {"code": 1, "message": "成功取消充电"}
+        elif state == UserState.waiting_for_charging:
+            # 取消充电
+            self.area.charging_area.end_charging(car_id)
+            # 改变用户状态
+            self.info.del_car(car_id)
+            return {"code": 1, "message": "成功取消充电"}
 
     def change_degree(self, car_id, degree):
         state = self.info.get_car_state(car_id)

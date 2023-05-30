@@ -1,3 +1,4 @@
+import copy
 from typing import List, Optional, Dict, Tuple
 from utils.my_time import virtual_time, VirtualTimer
 import utils.my_time as my_time
@@ -103,47 +104,65 @@ class QInfoFactory:
         self.__fast_number = 0
         self.__slow_number = 0
 
-    def manufacture_q_info(self, mode: str, user_id: int, car_id: str, degree: float):
+    def give_a_number(self, mode):
         if mode == "快充":
             self.__fast_number += 1
             number = "F" + str(self.__fast_number)
         else:
             self.__slow_number += 1
             number = "T" + str(self.__slow_number)
-        return QInfo(mode, user_id, car_id, degree, number)
+        return number
+
+    def manufacture_q_info(self, mode: str, user_id: int, car_id: str, degree: float):
+        return QInfo(mode, user_id, car_id, degree, self.give_a_number(mode))
+
+
+q_info_factory = QInfoFactory()
 
 
 class QQueue:
     def __init__(self, mode: str, max_len):
         self.mode = mode
         self.max_len = max_len
-        self.q: List[QInfo] = []
+        self.__q: List[QInfo] = []
 
     def get_car_position(self, car_id):
         i = 0
-        for q_info in self.q:
+        for q_info in self.__q:
             if q_info.car_id == car_id:
                 return i
             i += 1
         raise Exception("Your are not in this queue")
 
     def get_len(self):
-        return len(self.q)
+        return len(self.__q)
 
-    def pop(self):
-        if self.get_len() == 0:
-            raise Exception("The queue is empty, can not pop")
-        return self.q.pop()
+    def pop(self, index=0):
+        if self.get_len() <= index:
+            raise Exception("Index is out of queue length, can not pop")
+        return self.__q.pop(index)
 
     def push(self, q_info: QInfo):
         if self.get_len() == self.max_len:
             raise Exception("The queue is full, can not push")
-        self.q.append(q_info)
+        self.__q.append(q_info)
+
+    def get_queue(self):
+        return copy.deepcopy(self.__q)
+
+    def get_first_one(self):
+        return copy.deepcopy(self.__q[0])
+
+    def change_degree(self, index, degree):
+        self.__q[index].degree = degree
 
 
 class ChargingStationQueue(QQueue):
     def __init__(self, mode: str):
         super().__init__(mode, max_len=config.ChargingQueueLen)
+
+    def change_degree(self, index, degree):
+        raise Exception("Can't change degree in charging area")
 
 
 class ChargingStation:
@@ -175,12 +194,13 @@ class ChargingStation:
             return UserState.waiting_for_charging
 
     def start_charging(self, car_id):
-        first_info = self.q_queue.q[0]
+        first_info = self.q_queue.get_first_one()
         if car_id == first_info.car_id:
+            # 更改充电桩状态
             self.state = PileState.using
             # 更改预计排队时间
             waiting_time = 0
-            for q_info in self.q_queue.q:
+            for q_info in self.q_queue.get_queue():
                 waiting_time += q_info.during
             self.end_time = virtual_time.get_current_time() + waiting_time
             # 启动定时器
@@ -191,21 +211,32 @@ class ChargingStation:
 
     # 由用户或系统发起
     def end_charging(self, car_id):
+        """
+        分3种情况调用:
+        ① 由系统定时器结束充电发起。 ② 由用户终止充电。 ③ 用户还没有开始充电时取消充电。
+        :param car_id: car_id
+        :return: None
+        """
         # 检查是否是正确的操作
-        first_info = self.q_queue.q[0]
-        if car_id != first_info.car_id:
-            raise Exception("You are not the fist one in the charging queue, can not end charging")
-        elif self.state == PileState.using:
+        first_info = self.q_queue.get_first_one()
+        # 如果他不是第一位, 或是第一位但充电桩不在充电
+        if (first_info.car_id != car_id) or (first_info.car_id == car_id and self.state == PileState.free):
+            # ③取消充电
+            position = self.q_queue.get_car_position(car_id)
+            self.q_queue.pop(position)
+            return
+        # ①②结束充电
+        if self.state != PileState.using:
             raise Exception("Pile is not charging, can not end charging")
         # 结束定时器
         self.timer.terminate()
         # 改变充电桩状态
         self.state = PileState.free
+        # 出队列
+        self.q_queue.pop()
         # 更改预计排队时间
         if self.q_queue.get_len() == 0:
             self.end_time = None
-        # 出队列
-        self.q_queue.pop()
 
     def get_end_time(self):
         return self.end_time
@@ -330,9 +361,9 @@ class WaitingArea:
 
     def get_first(self, mode):
         if mode == "快充":
-            return self.fast_queue.q[0]
+            return self.fast_queue.get_first_one()
         else:
-            return self.slow_queue.q[0]
+            return self.slow_queue.get_first_one()
 
     def get_queue_len(self, mode):
         if mode == "快充":
@@ -351,17 +382,17 @@ class WaitingArea:
         mode = charging_info.get_mode(car_id)
         position: int = self.get_car_position(car_id)
         if mode == "快充":
-            self.fast_queue.q[position].degree = new_degree
+            self.fast_queue.change_degree(position, new_degree)
         else:
-            self.slow_queue.q[position].degree = new_degree
+            self.slow_queue.change_degree(position, new_degree)
 
     def cancel_waiting(self, car_id):
         mode = charging_info.get_mode(car_id)
         position: int = self.get_car_position(car_id)
         if mode == "快充":
-            return self.fast_queue.q.pop(position)
+            return self.fast_queue.pop(position)
         else:
-            return self.slow_queue.q.pop(position)
+            return self.slow_queue.pop(position)
 
     def change_mode(self, car_id, new_mode):
         mode = charging_info.get_mode(car_id)
@@ -369,6 +400,8 @@ class WaitingArea:
             raise Exception("Mode is same")
         q_info = self.cancel_waiting(car_id)
         q_info.mode = new_mode
+        # 重新派号
+        q_info.queue_num = q_info_factory.give_a_number(mode)
         self.add_car(q_info)
 
 
