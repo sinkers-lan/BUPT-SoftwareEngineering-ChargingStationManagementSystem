@@ -84,7 +84,7 @@ charging_info = ChargingInfo()
 
 
 class QInfo:
-    def __init__(self, mode: str, user_id: int, car_id: str, degree: float):
+    def __init__(self, mode: str, user_id: int, car_id: str, degree: float, queue_num: str):
         self.mode = mode
         self.user_id = user_id
         self.car_id = car_id
@@ -95,10 +95,22 @@ class QInfo:
         else:
             speed = 7.0
         self.during = (degree / speed) * 60 * 60
-        self.queue_num = ""
-
-    def assign_queue_num(self, queue_num: str):
         self.queue_num = queue_num
+
+
+class QInfoFactory:
+    def __init__(self):
+        self.__fast_number = 0
+        self.__slow_number = 0
+
+    def manufacture_q_info(self, mode: str, user_id: int, car_id: str, degree: float):
+        if mode == "快充":
+            self.__fast_number += 1
+            number = "F" + str(self.__fast_number)
+        else:
+            self.__slow_number += 1
+            number = "T" + str(self.__slow_number)
+        return QInfo(mode, user_id, car_id, degree, number)
 
 
 class QQueue:
@@ -297,10 +309,8 @@ class WaitingArea:
         if self.get_all_len() >= self.max_len:
             raise Exception("Could not add car into waiting area")
         if q_info.mode == "快充":
-            q_info.assign_queue_num("F" + str(self.fast_queue.get_len()))
             self.fast_queue.push(q_info)
         else:
-            q_info.assign_queue_num("T" + str(self.slow_queue.get_len()))
             self.slow_queue.push(q_info)
 
     def has_vacancy(self):
@@ -360,8 +370,6 @@ class WaitingArea:
         q_info = self.cancel_waiting(car_id)
         q_info.mode = new_mode
         self.add_car(q_info)
-
-
 
 
 class AllArea:

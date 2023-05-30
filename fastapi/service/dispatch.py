@@ -6,6 +6,7 @@ class Dispatch:
     def __int__(self):
         self.area = AllArea()
         self.info: ChargingInfo = charging_info
+        self.q_info_factory = QInfoFactory()
 
     def get_car_state(self, car_id):
         car_state = self.info.get_car_state(car_id)
@@ -35,26 +36,38 @@ class Dispatch:
         }
 
     def new_car_come(self, user_id, car_id, mode, degree):
-        q_info = QInfo(mode=mode, user_id=user_id, car_id=car_id, degree=degree)
+        q_info = self.q_info_factory.manufacture_q_info(mode=mode, user_id=user_id, car_id=car_id, degree=degree)
         # 先查看等候区是否有空位
         if not self.area.waiting_area.has_vacancy():
             # 如果没有空位就直接返回失败信息
-            return -1
+            return {"code": 0, "message": "等候区已满"}
+        # 加入
+        self.info.add_car(car_id)
         # 查看对应的模式的充电桩是否有空位
         if self.area.charging_area.has_vacancy(mode):
-            # 加入Info
-            self.info.add_car(car_id)
             # 如果有，寻找一个存在空位且等待时间最短的充电桩
             pile_id = self.area.charging_area.dispatch(mode)
             # 把车直接加入充电桩队列,返回用户是否可以充电
-            user_state = self.area.charging_area.add_car(mode, pile_id, q_info)  # 需要看里面的流程
+            user_state = self.area.charging_area.add_car(mode, pile_id, q_info)
             # 改变用户状态
             self.info.set_car_state(car_id, user_state)
+            car_position = self.area.charging_area.get_your_position(car_id)
         else:
             # 加入等候区
             self.area.waiting_area.add_car(q_info)
             # 改变用户状态
             self.info.set_car_state(car_id, UserState.waiting)
+            car_position = self.area.waiting_area.get_car_position(car_id)
+        return {
+            "code": 1,
+            "message": "请求成功",
+            "data": {
+                "car_position": car_position,
+                "car_state": self.info.get_car_state(car_id).value,
+                "queue_num": self.info.get_queue_num(car_id),
+                "request_time": self.info.get_request_time(car_id)
+            }
+        }
 
     def a_car_finish(self, pile_id, mode, car_id):
         # 由充电桩发起
@@ -71,7 +84,7 @@ class Dispatch:
             # 改变用户状态
             self.info.set_car_state(q_info.car_id, user_state)
 
-    def user_terminate(self, car_id):
+    def user_terminate(self, car_id):  # 需要和取消充电合并
         # 用户在不同区做不同处理
         state = self.info.get_car_state(car_id)
         if state == UserState.end:
@@ -79,11 +92,12 @@ class Dispatch:
         elif state == UserState.charging:
             # 结束充电
             mode = self.info.get_mode(car_id)
-            self.area.charging_area.end_charging(mode, car_id)
+            self.area.charging_area.end_charging(mode, car_id)  # 线程不安全
             # 改变用户状态
             self.info.set_car_state(car_id, UserState.end)
             # 结束充电
-            self.area.charging_area.end_charging(mode, car_id)
+            self.area.charging_area.end_charging(mode, car_id)  # 检查到这儿
+            return {"code": 1, "message": "成功结束充电"}
         else:
             return {"code": 0, "message": "用户不在充电，非法操作"}
 
