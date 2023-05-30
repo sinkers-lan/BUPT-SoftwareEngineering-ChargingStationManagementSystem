@@ -123,7 +123,7 @@ if st.session_state['stage'] == '用户登录':
             return
         if phone and password:
             my_json = {"user_name": phone, "password": password}
-            data = utils.post(path="/user/login", my_json=my_json)
+            data = utils.post(my_json=my_json, path="/user/login")
             if data['code'] == 1:
                 st.session_state['user'] = phone
                 st.session_state['token'] = data['data']['token']
@@ -178,7 +178,7 @@ if st.session_state['stage'] == '用户注册':
             st.error("电车电池容量不能为零")
             return
         my_json = {"user_name": phone, "password": password, "car_id": car, "capacity": capacity}
-        data = utils.post(path="/user/login", my_json=my_json)
+        data = utils.post(my_json=my_json, path="/user/login")
         if data['code'] == 1:
             st.session_state['user'] = phone
             st.session_state['token'] = data['data']['token']

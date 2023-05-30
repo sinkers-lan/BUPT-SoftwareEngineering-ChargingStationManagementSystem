@@ -1,12 +1,15 @@
-from domain.user import *
+from domain.user import AllArea, all_area, ChargingInfo, charging_info, QInfoFactory, q_info_factory, UserState
+# from domain.user import *
+# from domain import user
 from utils.my_time import virtual_time
 
 
 class Dispatch:
-    def __int__(self):
-        self.area = AllArea()
+    def __init__(self):
+        self.area: AllArea = all_area
         self.info: ChargingInfo = charging_info
         self.q_info_factory: QInfoFactory = q_info_factory
+        print(self.info, self.q_info_factory)
 
     def get_car_state(self, car_id):
         car_state = self.info.get_car_state(car_id)
@@ -28,11 +31,15 @@ class Dispatch:
             request_time = self.info.get_request_time(car_id)
             pile_id = self.info.get_pile_id(car_id)
         return {
-            "car_state": car_state,
-            "car_position": car_position,
-            "queue_num": queue_num,
-            "request_time": request_time,
-            "pile_id": pile_id
+            "code": 1,
+            "message": "请求成功",
+            "data": {
+                "car_state": car_state,
+                "car_position": car_position,
+                "queue_num": queue_num,
+                "request_time": request_time,
+                "pile_id": pile_id
+            }
         }
 
     def new_car_come(self, user_id, car_id, mode, degree):

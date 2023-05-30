@@ -2,6 +2,9 @@
 import datetime
 
 from fastapi import APIRouter
+from typing import Union
+from fastapi import Header
+from typing_extensions import Annotated
 
 # 用于FastAPI解析json格式数据
 from pydantic import BaseModel
@@ -9,8 +12,10 @@ from pydantic import BaseModel
 from utils import utils
 from dao import user as user_dao
 from domain.user import UserState
+from service.dispatch import Dispatch
 
 router = APIRouter(prefix="/user")
+dispatch = Dispatch()
 
 
 class LoginUser(BaseModel):
@@ -68,17 +73,9 @@ class ChargingRequest(BaseModel):
 
 @router.post("/chargingRequest")
 async def user_register(charging_request: ChargingRequest):
-    return {
-        "code": 1,
-        "message": "请求成功",
-        "data": {
-            "car_position": 2,
-            "car_state": UserState.waiting.value,
-            "queue_num": 4,
-            "request_time": datetime.datetime.now()
-        }
-    }
-    pass
+    data = dispatch.new_car_come(user_id=1, car_id=charging_request.car_id, mode=charging_request.request_mode,
+                                 degree=charging_request.request_amount)
+    return data
 
 
 class CarId(BaseModel):
@@ -86,20 +83,11 @@ class CarId(BaseModel):
 
 
 @router.post("/queryCarState")
-async def query_car_state(parm: CarId):
+async def query_car_state(parm: CarId, authorization: Annotated[Union[str, None], Header()] = None):
+    user_id = utils.decode_token(authorization)
     car_id = parm.car_id
-    return {
-        "code": 1,
-        "message": "请求成功",
-        "data": {
-            "car_position": 2,
-            "car_state": UserState.waiting.value,
-            "queue_num": "F4",
-            "request_time": datetime.datetime.now(),
-            "pile_id": 1,
-            "request_mode": "快充"
-        }
-    }
+    data = dispatch.get_car_state(car_id)
+    return data
 
 
 class ChangeChargingMode(BaseModel):

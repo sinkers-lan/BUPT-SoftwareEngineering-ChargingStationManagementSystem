@@ -416,3 +416,6 @@ class AllArea:
     def charging_is_vacancy(self, mode):
         is_vacancy = self.charging_area.has_vacancy(mode)
         return is_vacancy
+
+
+all_area = AllArea()

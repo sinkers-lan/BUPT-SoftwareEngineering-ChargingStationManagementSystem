@@ -1,4 +1,6 @@
 # 用于生成token
+import time
+
 import jwt
 import datetime
 import hashlib
@@ -14,7 +16,16 @@ def generate_token(user_id: int):
 
 
 def decode_token(token):
-    return jwt.decode(token, key="hello_my_teammates", algorithms='HS256')
+    try:
+        data = jwt.decode(token, key="hello_my_teammates", algorithms='HS256')
+    except jwt.DecodeError:
+        print("token解析失败")
+        return False
+    exp = data.pop('exp')
+    if time.time() > exp:
+        print('token已失效')
+        return False
+    return data.pop('user_id')
 
 
 def hash_password(password):
