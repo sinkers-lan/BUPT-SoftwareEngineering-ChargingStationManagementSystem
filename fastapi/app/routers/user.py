@@ -77,8 +77,9 @@ class ChargingRequest(BaseModel):
 
 
 @router.post("/chargingRequest")
-async def user_register(charging_request: ChargingRequest):
-    data = dispatching.new_car_come(user_id=1, car_id=charging_request.car_id, mode=charging_request.request_mode,
+async def user_register(charging_request: ChargingRequest, authorization: Annotated[Union[str, None], Header()] = None):
+    user_id = utils.decode_token(authorization)
+    data = dispatching.new_car_come(user_id=user_id, car_id=charging_request.car_id, mode=charging_request.request_mode,
                                     degree=charging_request.request_amount)
     return data
 
@@ -128,11 +129,9 @@ async def change_charging_amount(parm: ChangeChargingAmount):
 
 
 @router.post("/beginCharging")
-async def begin_charging(parm: CarId):
-    return {
-        "code": 1,
-        "message": "开始充电"
-    }
+async def begin_charging(parm: CarId, authorization: Annotated[Union[str, None], Header()] = None):
+    user_id = utils.decode_token(authorization)
+    return dispatching.begin_charging(parm.car_id)
 
 
 @router.post("/getChargingState")

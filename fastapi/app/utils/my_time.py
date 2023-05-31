@@ -26,6 +26,7 @@ class VirtualTime:
             self.thread.daemon = True  # 设置为守护线程，主线程退出时自动退出
             self.thread.start()
             self.is_start = True
+            print("虚拟时间已启动")
 
     def get_current_time(self):
         if not self.is_start:
@@ -73,6 +74,7 @@ class VirtualTimer:
             while self.running:
                 current_virtual_time = self.virtual_time.get_current_time()
                 if current_virtual_time >= self.specified_time:
+                    print("计时器到时")
                     self.callback(*self.args)
                     break
                 time.sleep(0.1)
@@ -82,6 +84,7 @@ class VirtualTimer:
         self.running = True
         self.thread = threading.Thread(target=check_time_and_callback, daemon=True)
         self.thread.start()
+        print("定时器已启动")
 
     def terminate(self):
         self.running = False

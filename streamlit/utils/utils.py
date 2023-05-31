@@ -7,7 +7,7 @@ HOST = "http://127.0.0.1:8002"
 
 
 def post(my_json: dict, path: str, token=None):
-    print(token)
+    # print(token)
     if token is not None:
         headers = {
             # "Content-Type": "application/json",

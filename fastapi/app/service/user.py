@@ -5,6 +5,7 @@ from ..utils import my_time
 from enum import Enum
 from ..utils import config
 
+# print("service:", virtual_time)
 
 class UserState(Enum):
     free = '空闲'
@@ -33,51 +34,53 @@ class Key(Enum):
 
 class ChargingInfo:
     def __init__(self):
-        self.charging_info: Dict[str, Dict[Key, Optional]] = {}
+        self.__charging_info: Dict[str, Dict[Key, Optional]] = {}
 
     def add_car(self, car_id):
-        self.charging_info[car_id] = {}
+        self.__charging_info[car_id] = {}
 
     def del_car(self, car_id):
-        self.charging_info.pop(car_id)
+        self.__charging_info.pop(car_id)
 
     def get_car_state(self, car_id):
-        if self.charging_info.get(car_id, -1) == -1:
+        if self.__charging_info.get(car_id, -1) == -1:
             return UserState.free
-        return self.charging_info[car_id][Key.car_state]
+        # print("get car state", car_id, self.__charging_info[car_id][Key.car_state])
+        return self.__charging_info[car_id][Key.car_state]
 
     def get_queue_num(self, car_id):
-        return self.charging_info[car_id][Key.queue_num]
+        return self.__charging_info[car_id][Key.queue_num]
 
     def get_request_time(self, car_id):
-        return self.charging_info[car_id][Key.request_time]
+        return self.__charging_info[car_id][Key.request_time]
 
     def get_pile_id(self, car_id):
-        return self.charging_info[car_id][Key.pile_id]
+        return self.__charging_info[car_id][Key.pile_id]
 
     def get_bill_id(self, car_id):
-        return self.charging_info[car_id][Key.additional_bill_id]
+        return self.__charging_info[car_id][Key.additional_bill_id]
 
     def get_mode(self, car_id):
-        return self.charging_info[car_id][Key.request_mode]
+        return self.__charging_info[car_id][Key.request_mode]
 
     def set_car_state(self, car_id, car_state):
-        self.charging_info[car_id][Key.car_state] = car_state
+        # print("set car state", car_id, car_state.value)
+        self.__charging_info[car_id][Key.car_state] = car_state
 
     def set_queue_num(self, car_id, queue_num):
-        self.charging_info[car_id][Key.queue_num] = queue_num
+        self.__charging_info[car_id][Key.queue_num] = queue_num
 
     def set_request_time(self, car_id, request_time):
-        self.charging_info[car_id][Key.request_time] = request_time
+        self.__charging_info[car_id][Key.request_time] = request_time
 
     def set_pile_id(self, car_id, pile_id):
-        self.charging_info[car_id][Key.pile_id] = pile_id
+        self.__charging_info[car_id][Key.pile_id] = pile_id
 
     def set_bill_id(self, car_id, bill_id):
-        self.charging_info[car_id][Key.additional_bill_id] = bill_id
+        self.__charging_info[car_id][Key.additional_bill_id] = bill_id
 
     def set_mode(self, car_id, mode):
-        self.charging_info[car_id][Key.request_mode] = mode
+        self.__charging_info[car_id][Key.request_mode] = mode
 
 
 charging_info = ChargingInfo()
@@ -96,6 +99,10 @@ class QInfo:
             speed = 7.0
         self.during = (degree / speed) * 60 * 60
         self.queue_num = queue_num
+        charging_info.add_car(car_id)
+        charging_info.set_mode(car_id, mode)
+        charging_info.set_request_time(car_id, self.request_time)
+        charging_info.set_queue_num(car_id, queue_num)
 
 
 class QInfoFactory:
@@ -173,7 +180,7 @@ class ChargingStation:
         else:
             self.speed = 7.0
         self.q_queue = ChargingStationQueue(mode)
-        self.end_time: Optional[float] = None
+        self.end_time: float = -1
         self.state: PileState = PileState.free
         self.timer: Optional[VirtualTimer] = None
 
@@ -235,7 +242,11 @@ class ChargingStation:
         self.q_queue.pop()
         # 更改预计排队时间
         if self.q_queue.get_len() == 0:
-            self.end_time = None
+            self.end_time = -1
+        else:
+            # 把后一个车的状态设置为允许充电
+            q_info = self.q_queue.get_first_one()
+            charging_info.set_car_state(q_info.car_id, UserState.allow)
 
     def get_end_time(self):
         return self.end_time
@@ -278,8 +289,13 @@ class ChargingAreaFastOrSlow:
         """
         end_time_dict = dict(
             [(pile.get_end_time(), pile.pile_id) for pile in self.pile_dict.values() if pile.has_vacancy()])
-        earliest_end_time = min(end_time_dict.values())
-        return end_time_dict[earliest_end_time]
+        earliest_end_time = min(end_time_dict.keys())  # 选出最小时间
+        return end_time_dict[earliest_end_time]  # 得到对应的充电桩号
+
+    def begin_charging(self, car_id):
+        pile_id = charging_info.get_pile_id(car_id)
+        self.pile_dict[pile_id].start_charging(car_id)
+
 
 
 class ChargingArea:
@@ -319,6 +335,13 @@ class ChargingArea:
             return self.fast_area.pile_dict[pile_id].q_queue.get_car_position(car_id)
         else:
             return self.slow_area.pile_dict[pile_id].q_queue.get_car_position(car_id)
+
+    def begin_charging(self, car_id):
+        mode = charging_info.get_mode(car_id)
+        if mode == "快充":
+            self.fast_area.begin_charging(car_id)
+        else:
+            self.fast_area.begin_charging(car_id)
 
 
 class WaitingQueue(QQueue):
@@ -429,19 +452,28 @@ class Dispatch:
         queue_num = None
         request_time = None
         pile_id = None
+        mode = None
         if car_state == UserState.free:
-            car_state = UserState.free.value
+            car_state = car_state.value
         elif car_state == UserState.waiting:
-            car_state = UserState.waiting.value
+            car_state = car_state.value
             car_position = self.area.waiting_area.get_car_position(car_id)
             queue_num = self.info.get_queue_num(car_id)
             request_time = self.info.get_request_time(car_id)
+            mode = self.info.get_mode(car_id)
+        elif car_state == UserState.end:
+            car_state = car_state.value
+            queue_num = self.info.get_queue_num(car_id)
+            request_time = self.info.get_request_time(car_id)
+            pile_id = self.info.get_pile_id(car_id)
+            mode = self.info.get_mode(car_id)
         else:
-            car_state = UserState.waiting_for_charging.value
+            car_state = car_state.value
             car_position = self.area.charging_area.get_your_position(car_id)
             queue_num = self.info.get_queue_num(car_id)
             request_time = self.info.get_request_time(car_id)
             pile_id = self.info.get_pile_id(car_id)
+            mode = self.info.get_mode(car_id)
         return {
             "code": 1,
             "message": "请求成功",
@@ -450,18 +482,20 @@ class Dispatch:
                 "car_position": car_position,
                 "queue_num": queue_num,
                 "request_time": request_time,
-                "pile_id": pile_id
+                "pile_id": pile_id,
+                "request_mode": mode
             }
         }
 
     def new_car_come(self, user_id, car_id, mode, degree):
-        q_info = self.q_info_factory.manufacture_q_info(mode=mode, user_id=user_id, car_id=car_id, degree=degree)
+        if self.info.get_car_state(car_id) != UserState.free:
+            return {"code": 0, "message": "用户当前状态不空闲，不允许提交充电请求"}
         # 先查看等候区是否有空位
         if not self.area.waiting_area.has_vacancy():
             # 如果没有空位就直接返回失败信息
             return {"code": 0, "message": "等候区已满"}
-        # 加入
-        self.info.add_car(car_id)
+        q_info = self.q_info_factory.manufacture_q_info(mode=mode, user_id=user_id, car_id=car_id, degree=degree)
+        # 在QInfo对象被创建的时候，会自动在info表中添加这个车的信息
         # 查看对应的模式的充电桩是否有空位
         if self.area.charging_area.has_vacancy(mode):
             # 如果有，寻找一个存在空位且等待时间最短的充电桩
@@ -470,6 +504,7 @@ class Dispatch:
             user_state = self.area.charging_area.add_car(mode, pile_id, q_info)
             # 改变用户状态
             self.info.set_car_state(car_id, user_state)
+            self.info.set_pile_id(car_id, pile_id)
             car_position = self.area.charging_area.get_your_position(car_id)
         else:
             # 加入等候区
@@ -500,6 +535,7 @@ class Dispatch:
 
     def a_car_finish(self, pile_id, mode, car_id):
         # 由充电桩发起
+        print("a car finish", car_id, pile_id, mode)
         # 改变用户状态
         self.info.set_car_state(car_id, UserState.end)
         # 调用充电桩的自动结束充电接口
@@ -551,6 +587,13 @@ class Dispatch:
             return {"code": 0, "message": "充电模式没有改变"}
         self.area.waiting_area.change_mode(car_id, mode)
         self.info.set_mode(car_id, mode)
+        return {"code": 1, "message": "请求成功"}
+
+    def begin_charging(self, car_id):
+        state = self.info.get_car_state(car_id)
+        if state != UserState.allow:
+            return {"code": 0, "massage": "用于状态不处于允许充电状态"}
+        self.area.charging_area.begin_charging(car_id)
         return {"code": 1, "message": "请求成功"}
 
 
