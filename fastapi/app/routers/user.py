@@ -11,8 +11,8 @@ from pydantic import BaseModel
 
 from app.utils import utils
 from app.dao import user as user_dao
-from app.domain.user import UserState
-from app.service import dispatch
+from app.service.user import UserState
+from app.service.user import dispatching
 from app.dependencies import get_token_header
 
 router = APIRouter(
@@ -21,7 +21,6 @@ router = APIRouter(
     # dependencies=[Depends(get_token_header)],
     # responses={404: {"description": "Not found"}},
 )
-dispatching = dispatch.Dispatch()
 
 
 class LoginUser(BaseModel):
