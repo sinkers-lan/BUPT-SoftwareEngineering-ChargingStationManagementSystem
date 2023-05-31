@@ -1,4 +1,4 @@
-from dao.connection import my_connect
+from ..dao.connection import my_connect
 
 
 # conn = sqlite3.connect('SoftwareEngineering.db')

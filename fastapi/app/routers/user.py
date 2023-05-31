@@ -1,7 +1,7 @@
 # Fastapi
 import datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 from typing import Union
 from fastapi import Header
 from typing_extensions import Annotated
@@ -9,13 +9,19 @@ from typing_extensions import Annotated
 # 用于FastAPI解析json格式数据
 from pydantic import BaseModel
 
-from utils import utils
-from dao import user as user_dao
-from domain.user import UserState
-from service.dispatch import Dispatch
+from app.utils import utils
+from app.dao import user as user_dao
+from app.domain.user import UserState
+from app.service import dispatch
+from app.dependencies import get_token_header
 
-router = APIRouter(prefix="/user")
-dispatch = Dispatch()
+router = APIRouter(
+    prefix="/user",
+    # tags=["user"],
+    # dependencies=[Depends(get_token_header)],
+    # responses={404: {"description": "Not found"}},
+)
+dispatching = dispatch.Dispatch()
 
 
 class LoginUser(BaseModel):
@@ -73,8 +79,8 @@ class ChargingRequest(BaseModel):
 
 @router.post("/chargingRequest")
 async def user_register(charging_request: ChargingRequest):
-    data = dispatch.new_car_come(user_id=1, car_id=charging_request.car_id, mode=charging_request.request_mode,
-                                 degree=charging_request.request_amount)
+    data = dispatching.new_car_come(user_id=1, car_id=charging_request.car_id, mode=charging_request.request_mode,
+                                    degree=charging_request.request_amount)
     return data
 
 
@@ -86,7 +92,7 @@ class CarId(BaseModel):
 async def query_car_state(parm: CarId, authorization: Annotated[Union[str, None], Header()] = None):
     user_id = utils.decode_token(authorization)
     car_id = parm.car_id
-    data = dispatch.get_car_state(car_id)
+    data = dispatching.get_car_state(car_id)
     return data
 
 

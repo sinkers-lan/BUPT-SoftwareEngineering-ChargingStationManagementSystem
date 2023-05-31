@@ -1,6 +1,6 @@
-import utils.utils
-from dao.connection import my_connect
-from utils.my_time import virtual_time
+from ..utils import utils
+from ..dao.connection import my_connect
+from ..utils.my_time import virtual_time
 import sqlite3
 
 

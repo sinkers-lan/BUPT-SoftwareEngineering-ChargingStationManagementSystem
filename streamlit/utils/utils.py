@@ -13,6 +13,6 @@ def post(my_json: dict, path: str, token=None):
             # "Content-Type": "application/json",
             "Authorization": token
         }
-        requests.post(url=HOST + path, data=json.dumps(my_json), headers=headers).json()
+        return requests.post(url=HOST + path, data=json.dumps(my_json), headers=headers).json()
     else:
-        requests.post(url=HOST + path, data=json.dumps(my_json)).json()
+        return requests.post(url=HOST + path, data=json.dumps(my_json)).json()
