@@ -41,5 +41,9 @@ def generate_bill_ls(bill_id):
     return code_qz + code_sj + str(bill_id)
 
 
-def formate_datetime(time_stamp: float):
+def formate_datetime_f(time_stamp: float):
     return datetime.datetime.fromtimestamp(time_stamp).strftime("%Y-%m-%d %H:%M:%S.%f")[:-4]
+
+
+def formate_datetime_s(time_stamp: float):
+    return datetime.datetime.fromtimestamp(time_stamp).strftime("%Y-%m-%d %H:%M:%S")

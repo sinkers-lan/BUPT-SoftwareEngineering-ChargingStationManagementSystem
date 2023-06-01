@@ -45,6 +45,24 @@ def end_charging():
     st.write(data_)
 
 
+def change_charging_mode():
+    data = {
+        "car_id": st.session_state['car'],
+        "request_mode": "T"
+    }
+    data_ = utils.post(data, path="/user/changeChargingMode", token=st.session_state['token'])
+    st.write(data_)
+
+
+def change_charging_amount():
+    data = {
+        "car_id": st.session_state['car'],
+        "request_amount": 10.0
+    }
+    data_ = utils.post(data, path="/user/changeChargingAmount", token=st.session_state['token'])
+    st.write(data_)
+
+
 if "car" not in st.session_state:
     st.write("请先登录")
 else:
@@ -53,3 +71,5 @@ else:
     st.button("beginCharging", on_click=begin_charging)
     st.button("getPayBill", on_click=pay_the_bill)
     st.button("endCharging", on_click=end_charging)
+    st.button("changeChargingMode", on_click=change_charging_mode)
+    st.button("changeChargingAmount", on_click=change_charging_amount)

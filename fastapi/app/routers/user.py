@@ -122,7 +122,8 @@ class ChangeChargingAmount(BaseModel):
 
 
 @router.post("/changeChargingAmount")
-async def change_charging_amount(parm: ChangeChargingAmount, authorization: Annotated[Union[str, None], Header()] = None):
+async def change_charging_amount(parm: ChangeChargingAmount,
+                                 authorization: Annotated[Union[str, None], Header()] = None):
     flag, info = utils.decode_token(authorization)
     if not flag:
         return {"code": 0, "message": info}
@@ -166,7 +167,7 @@ async def end_charging(parm: CarId, authorization: Annotated[Union[str, None], H
     flag, info = utils.decode_token(authorization)
     if not flag:
         return {"code": 0, "message": info}
-    return dispatching.user_terminate(car_id=parm.car_id)
+    return dispatching.user_terminate(parm.car_id)
 
 
 class ChangeCapacity(BaseModel):

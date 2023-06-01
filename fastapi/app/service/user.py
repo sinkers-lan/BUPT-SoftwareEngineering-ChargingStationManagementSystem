@@ -1,7 +1,7 @@
 import copy
 from typing import List, Optional, Dict
 from ..utils.my_time import virtual_time, VirtualTimer
-from ..utils import my_time
+from ..utils import my_time, utils
 from enum import Enum
 from ..utils import config
 
@@ -35,6 +35,7 @@ class Key(Enum):
     request_time = "充电请求时间"
     pile_id = "充电桩编号；当车辆在等候区时返回空值"
     request_mode = "充电模式"
+    request_amount = "充电量"
     additional_bill_id = "详单编号"
 
 
@@ -69,6 +70,12 @@ class ChargingInfo:
     def get_mode(self, car_id):
         return self.__charging_info[car_id][Key.request_mode]
 
+    def get_amount(self, car_id):
+        return self.__charging_info[car_id][Key.request_amount]
+
+    def get_additional_bill_id(self, car_id):
+        return self.__charging_info[car_id][Key.additional_bill_id]
+
     def set_car_state(self, car_id, car_state):
         # print("set car state", car_id, car_state.value)
         self.__charging_info[car_id][Key.car_state] = car_state
@@ -87,6 +94,12 @@ class ChargingInfo:
 
     def set_mode(self, car_id, mode):
         self.__charging_info[car_id][Key.request_mode] = mode
+
+    def set_amount(self, car_id, amount):
+        self.__charging_info[car_id][Key.request_amount] = amount
+
+    def set_additional_bill_id(self, car_id, bill_id):
+        self.__charging_info[car_id][Key.additional_bill_id] = bill_id
 
 
 charging_info = ChargingInfo()
@@ -109,6 +122,7 @@ class QInfo:
         charging_info.set_mode(car_id, mode)
         charging_info.set_request_time(car_id, self.request_time)
         charging_info.set_queue_num(car_id, queue_num)
+        charging_info.set_amount(car_id, degree)
 
 
 class QInfoFactory:
@@ -343,7 +357,7 @@ class ChargingArea:
         if mode == Mode.fast:
             self.fast_area.begin_charging(car_id)
         else:
-            self.fast_area.begin_charging(car_id)
+            self.slow_area.begin_charging(car_id)
 
 
 class WaitingQueue(QQueue):
@@ -393,7 +407,7 @@ class WaitingArea:
         if mode == Mode.fast:
             return self.fast_queue.get_len()
         else:
-            return self.fast_queue.get_len()
+            return self.slow_queue.get_len()
 
     def get_car_position(self, car_id):
         mode = charging_info.get_mode(car_id)
@@ -445,28 +459,32 @@ class Dispatch:
         request_time = None
         pile_id = None
         mode = None
+        amount = None
         if car_state == UserState.free:
             car_state = car_state.value
         elif car_state == UserState.waiting:
             car_state = car_state.value
             car_position = self.area.waiting_area.get_car_position(car_id) + 1
             queue_num = self.info.get_queue_num(car_id)
-            request_time = self.info.get_request_time(car_id)
+            request_time = utils.formate_datetime_s(self.info.get_request_time(car_id))
             mode = self.info.get_mode(car_id)
+            amount = self.info.get_amount(car_id)
         elif car_state == UserState.end:
             car_state = car_state.value
             car_position = 1
             queue_num = self.info.get_queue_num(car_id)
-            request_time = self.info.get_request_time(car_id)
+            request_time = utils.formate_datetime_s(self.info.get_request_time(car_id))
             pile_id = self.info.get_pile_id(car_id)
             mode = self.info.get_mode(car_id)
+            amount = self.info.get_amount(car_id)
         else:
             car_state = car_state.value
             car_position = self.area.charging_area.get_your_position(car_id) + 1
             queue_num = self.info.get_queue_num(car_id)
-            request_time = self.info.get_request_time(car_id)
+            request_time = utils.formate_datetime_s(self.info.get_request_time(car_id))
             pile_id = self.info.get_pile_id(car_id)
             mode = self.info.get_mode(car_id)
+            amount = self.info.get_amount(car_id)
         return {
             "code": 1,
             "message": "请求成功",
@@ -476,7 +494,8 @@ class Dispatch:
                 "queue_num": queue_num,
                 "request_time": request_time,
                 "pile_id": pile_id,
-                "request_mode": mode
+                "request_mode": mode,
+                "request_amount": amount
             }
         }
 
@@ -526,7 +545,7 @@ class Dispatch:
                 "car_position": car_position + 1,
                 "car_state": self.info.get_car_state(car_id).value,
                 "queue_num": self.info.get_queue_num(car_id),
-                "request_time": self.info.get_request_time(car_id)
+                "request_time": utils.formate_datetime_s(self.info.get_request_time(car_id)),
             }
         }
 
@@ -575,18 +594,21 @@ class Dispatch:
             # 改变用户状态
             self.info.del_car(car_id)
             return {"code": 1, "message": "成功取消充电"}
-        elif state == UserState.waiting_for_charging:
+        elif state == UserState.waiting_for_charging or state == UserState.allow:
             # 取消充电
             self.area.charging_area.end_charging(car_id)
             # 改变用户状态
             self.info.del_car(car_id)
             return {"code": 1, "message": "成功取消充电"}
+        else:
+            return {"code": 0, "message": "用户处于空闲状态，无法取消充电"}
 
     def change_degree(self, car_id, degree):
         state = self.info.get_car_state(car_id)
         if state != UserState.waiting:
             return {"code": 0, "message": "用户不在等候区，无法修改充电量"}
         self.area.waiting_area.change_degree(car_id, degree)
+        self.info.set_amount(car_id, degree)
         return {"code": 1, "message": "请求成功"}
 
     def change_mode(self, car_id, mode):
@@ -605,6 +627,7 @@ class Dispatch:
         self.info.set_mode(car_id, mode)
         # 重新派号
         q_info.queue_num = self.q_info_factory.give_a_number(mode)
+        self.info.set_queue_num(car_id, q_info.queue_num)
         # 加入车辆
         car_position = self.__add_car(q_info)
         return {
@@ -614,7 +637,7 @@ class Dispatch:
                 "car_position": car_position + 1,
                 "car_state": self.info.get_car_state(car_id).value,
                 "queue_num": self.info.get_queue_num(car_id),
-                "request_time": self.info.get_request_time(car_id)
+                "request_time": utils.formate_datetime_s(self.info.get_request_time(car_id)),
             }
         }
 
