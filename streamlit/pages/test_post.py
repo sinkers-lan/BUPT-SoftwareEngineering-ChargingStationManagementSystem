@@ -37,7 +37,19 @@ def pay_the_bill():
     st.write(data_)
 
 
-st.button("queryCarState", on_click=query_car_state)
-st.button("chargingRequest", on_click=charging_request)
-st.button("beginCharging", on_click=begin_charging)
-st.button("getPayBill", on_click=pay_the_bill)
+def end_charging():
+    data = {
+        "car_id": st.session_state['car']
+    }
+    data_ = utils.post(data, path="/user/endCharging", token=st.session_state['token'])
+    st.write(data_)
+
+
+if "car" not in st.session_state:
+    st.write("请先登录")
+else:
+    st.button("queryCarState", on_click=query_car_state)
+    st.button("chargingRequest", on_click=charging_request)
+    st.button("beginCharging", on_click=begin_charging)
+    st.button("getPayBill", on_click=pay_the_bill)
+    st.button("endCharging", on_click=end_charging)

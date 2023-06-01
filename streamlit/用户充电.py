@@ -172,7 +172,7 @@ def user_logon():
             st.error("电车电池容量不能为零")
             return
         my_json = {"user_name": phone, "password": password, "car_id": car, "capacity": capacity}
-        data = utils.post(my_json=my_json, path="/user/login")
+        data = utils.post(my_json=my_json, path="/user/register")
         if data['code'] == 1:
             st.session_state['user'] = phone
             st.session_state['token'] = data['data']['token']

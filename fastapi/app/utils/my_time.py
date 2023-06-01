@@ -7,7 +7,7 @@ from typing import Tuple
 class VirtualTime:
     def __init__(self):
         self.start_time = time.time()
-        self.time_multiplier = 1000
+        self.time_multiplier = 100
         self.current_virtual_time = time.time()
         self.is_start = False
 
@@ -50,7 +50,7 @@ class VirtualTime:
     def accelerate(self):
         if not self.is_start:
             raise Exception('Virtual time has not yet started')
-        self.time_multiplier = 1000
+        self.time_multiplier = 100
 
     def moderate(self):
         if not self.is_start:

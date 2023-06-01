@@ -113,16 +113,7 @@ async def change_charging_mode(parm: ChangeChargingMode, authorization: Annotate
     flag, info = utils.decode_token(authorization)
     if not flag:
         return {"code": 0, "message": info}
-    return {
-        "code": 1,
-        "message": "请求成功",
-        "data": {
-            "car_position": 2,
-            "car_state": UserState.waiting.value,
-            "queue_num": 4,
-            "request_time": datetime.datetime.now()
-        }
-    }
+    return dispatching.change_mode(parm.car_id, parm.request_mode)
 
 
 class ChangeChargingAmount(BaseModel):
@@ -135,10 +126,7 @@ async def change_charging_amount(parm: ChangeChargingAmount, authorization: Anno
     flag, info = utils.decode_token(authorization)
     if not flag:
         return {"code": 0, "message": info}
-    return {
-        "code": 1,
-        "message": "请求成功"
-    }
+    return dispatching.change_degree(parm.car_id, parm.request_amount)
 
 
 @router.post("/beginCharging")
@@ -178,10 +166,7 @@ async def end_charging(parm: CarId, authorization: Annotated[Union[str, None], H
     flag, info = utils.decode_token(authorization)
     if not flag:
         return {"code": 0, "message": info}
-    return {
-        "code": 1,
-        "message": "充电结束"
-    }
+    return dispatching.user_terminate(car_id=parm.car_id)
 
 
 class ChangeCapacity(BaseModel):
