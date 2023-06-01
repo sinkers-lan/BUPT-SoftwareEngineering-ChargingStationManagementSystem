@@ -5,6 +5,7 @@ from ..utils import my_time
 from enum import Enum
 from ..utils import config
 
+
 # print("service:", virtual_time)
 
 class UserState(Enum):
@@ -21,6 +22,11 @@ class PileState(Enum):
     free = '空前'
     using = "使用中"
     damage = "损坏"
+
+
+class Mode(Enum):
+    fast = 'F'
+    slow = 'T'
 
 
 class Key(Enum):
@@ -87,13 +93,13 @@ charging_info = ChargingInfo()
 
 
 class QInfo:
-    def __init__(self, mode: str, user_id: int, car_id: str, degree: float, queue_num: str):
+    def __init__(self, mode: Mode, user_id: int, car_id: str, degree: float, queue_num: str):
         self.mode = mode
         self.user_id = user_id
         self.car_id = car_id
         self.degree = degree
         self.request_time = virtual_time.get_current_time()
-        if mode == "快充":
+        if mode == Mode.fast:
             speed = 30.0
         else:
             speed = 7.0
@@ -111,7 +117,7 @@ class QInfoFactory:
         self.__slow_number = 0
 
     def give_a_number(self, mode):
-        if mode == "快充":
+        if mode == Mode.fast:
             self.__fast_number += 1
             number = "F" + str(self.__fast_number)
         else:
@@ -119,7 +125,7 @@ class QInfoFactory:
             number = "T" + str(self.__slow_number)
         return number
 
-    def manufacture_q_info(self, mode: str, user_id: int, car_id: str, degree: float):
+    def manufacture_q_info(self, mode: Mode, user_id: int, car_id: str, degree: float):
         return QInfo(mode, user_id, car_id, degree, self.give_a_number(mode))
 
 
@@ -127,7 +133,7 @@ q_info_factory = QInfoFactory()
 
 
 class QQueue:
-    def __init__(self, mode: str, max_len):
+    def __init__(self, mode: Mode, max_len):
         self.mode = mode
         self.max_len = max_len
         self.__q: List[QInfo] = []
@@ -164,7 +170,7 @@ class QQueue:
 
 
 class ChargingStationQueue(QQueue):
-    def __init__(self, mode: str):
+    def __init__(self, mode: Mode):
         super().__init__(mode, max_len=config.ChargingQueueLen)
 
     def change_degree(self, index, degree):
@@ -172,10 +178,10 @@ class ChargingStationQueue(QQueue):
 
 
 class ChargingStation:
-    def __init__(self, mode: str, pile_id: int):
+    def __init__(self, mode: Mode, pile_id: int):
         self.mode = mode
         self.pile_id = pile_id
-        if mode == "快充":
+        if mode == Mode.fast:
             self.speed = 30.0
         else:
             self.speed = 7.0
@@ -258,7 +264,7 @@ class ChargingStation:
 class ChargingAreaFastOrSlow:
     def __init__(self, mode):
         self.mode = mode
-        if mode == "快充":
+        if mode == Mode.fast:
             self.pile_num = config.FastChargingPileNum
             keys = [i * 10 + 0 for i in range(1, config.FastChargingPileNum + 1)]
         else:
@@ -297,33 +303,32 @@ class ChargingAreaFastOrSlow:
         self.pile_dict[pile_id].start_charging(car_id)
 
 
-
 class ChargingArea:
     def __init__(self):
-        self.fast_area = ChargingAreaFastOrSlow("快充")
-        self.slow_area = ChargingAreaFastOrSlow("慢充")
+        self.fast_area = ChargingAreaFastOrSlow(Mode.fast)
+        self.slow_area = ChargingAreaFastOrSlow(Mode.slow)
 
     def has_vacancy(self, mode):
-        if mode == "快充":
+        if mode == Mode.fast:
             return self.fast_area.has_vacancy()
         else:
             return self.slow_area.has_vacancy()
 
     def add_car(self, mode, pile_id, q_info: QInfo) -> UserState:
-        if mode == "快充":
+        if mode == Mode.fast:
             return self.fast_area.add_car(pile_id, q_info)
         else:
             return self.slow_area.add_car(pile_id, q_info)
 
     def dispatch(self, mode):
-        if mode == "快充":
+        if mode == Mode.fast:
             return self.fast_area.dispatch()
         else:
             return self.slow_area.dispatch()
 
     def end_charging(self, car_id):
         mode = charging_info.get_mode(car_id)
-        if mode == "快充":
+        if mode == Mode.fast:
             self.fast_area.end_charging(car_id)
         else:
             self.slow_area.end_charging(car_id)
@@ -331,28 +336,28 @@ class ChargingArea:
     def get_your_position(self, car_id):
         mode = charging_info.get_mode(car_id)
         pile_id = charging_info.get_pile_id(car_id)
-        if mode == "快充":
+        if mode == Mode.fast:
             return self.fast_area.pile_dict[pile_id].q_queue.get_car_position(car_id)
         else:
             return self.slow_area.pile_dict[pile_id].q_queue.get_car_position(car_id)
 
     def begin_charging(self, car_id):
         mode = charging_info.get_mode(car_id)
-        if mode == "快充":
+        if mode == Mode.fast:
             self.fast_area.begin_charging(car_id)
         else:
             self.fast_area.begin_charging(car_id)
 
 
 class WaitingQueue(QQueue):
-    def __init__(self, mode: str):
+    def __init__(self, mode: Mode):
         super().__init__(mode, config.WaitingAreaSize)
 
 
 class WaitingArea:
     def __init__(self):
-        self.fast_queue = WaitingQueue("快充")
-        self.slow_queue = WaitingQueue("慢充")
+        self.fast_queue = WaitingQueue(Mode.fast)
+        self.slow_queue = WaitingQueue(Mode.slow)
         self.max_len = config.WaitingAreaSize
 
     def get_all_len(self):
@@ -361,7 +366,7 @@ class WaitingArea:
     def add_car(self, q_info: QInfo):
         if self.get_all_len() >= self.max_len:
             raise Exception("Could not add car into waiting area")
-        if q_info.mode == "快充":
+        if q_info.mode == Mode.fast:
             self.fast_queue.push(q_info)
         else:
             self.slow_queue.push(q_info)
@@ -370,32 +375,32 @@ class WaitingArea:
         return self.get_all_len() < self.max_len
 
     def has_car(self, mode):
-        if mode == "快充":
+        if mode == Mode.fast:
             return self.fast_queue.get_len() != 0
         else:
             return self.slow_queue.get_len() != 0
 
     def call_out(self, mode) -> QInfo:
-        if mode == "快充":
+        if mode == Mode.fast:
             return self.fast_queue.pop()
         else:
             return self.slow_queue.pop()
 
     def get_first(self, mode):
-        if mode == "快充":
+        if mode == Mode.fast:
             return self.fast_queue.get_first_one()
         else:
             return self.slow_queue.get_first_one()
 
     def get_queue_len(self, mode):
-        if mode == "快充":
+        if mode == Mode.fast:
             return self.fast_queue.get_len()
         else:
             return self.fast_queue.get_len()
 
     def get_car_position(self, car_id):
         mode = charging_info.get_mode(car_id)
-        if mode == "快充":
+        if mode == Mode.fast:
             return self.fast_queue.get_car_position(car_id)
         else:
             return self.slow_queue.get_car_position(car_id)
@@ -403,7 +408,7 @@ class WaitingArea:
     def change_degree(self, car_id, new_degree):
         mode = charging_info.get_mode(car_id)
         position: int = self.get_car_position(car_id)
-        if mode == "快充":
+        if mode == Mode.fast:
             self.fast_queue.change_degree(position, new_degree)
         else:
             self.slow_queue.change_degree(position, new_degree)
@@ -411,7 +416,7 @@ class WaitingArea:
     def cancel_waiting(self, car_id):
         mode = charging_info.get_mode(car_id)
         position: int = self.get_car_position(car_id)
-        if mode == "快充":
+        if mode == Mode.fast:
             return self.fast_queue.pop(position)
         else:
             return self.slow_queue.pop(position)
@@ -463,6 +468,7 @@ class Dispatch:
             mode = self.info.get_mode(car_id)
         elif car_state == UserState.end:
             car_state = car_state.value
+            car_position = 0
             queue_num = self.info.get_queue_num(car_id)
             request_time = self.info.get_request_time(car_id)
             pile_id = self.info.get_pile_id(car_id)
@@ -488,6 +494,8 @@ class Dispatch:
         }
 
     def new_car_come(self, user_id, car_id, mode, degree):
+        # 把mode从字符串转换成枚举类型
+        mode = Mode(mode)
         if self.info.get_car_state(car_id) != UserState.free:
             return {"code": 0, "message": "用户当前状态不空闲，不允许提交充电请求"}
         # 先查看等候区是否有空位
@@ -524,6 +532,8 @@ class Dispatch:
         }
 
     def call_out(self, pile_id, mode):
+        # 把mode从字符串转换成枚举类型
+        mode = Mode(mode)
         # 如果有等候区有匹配模式待叫号的车辆
         if self.area.waiting_area.has_car(mode):
             # 获取到最先的用户,并出队列
@@ -534,6 +544,8 @@ class Dispatch:
             self.info.set_car_state(q_info.car_id, user_state)
 
     def a_car_finish(self, pile_id, mode, car_id):
+        # 把mode从字符串转换成枚举类型
+        mode = Mode(mode)
         # 由充电桩发起
         print("a car finish", car_id, pile_id, mode)
         # 改变用户状态
@@ -579,6 +591,8 @@ class Dispatch:
         return {"code": 1, "message": "请求成功"}
 
     def change_mode(self, car_id, mode):
+        # 把mode从字符串转换成枚举类型
+        mode = Mode(mode)
         state = self.info.get_car_state(car_id)
         if state != UserState.waiting:
             return {"code": 0, "message": "用户不在等候区，无法修改充模式"}
@@ -595,6 +609,14 @@ class Dispatch:
             return {"code": 0, "massage": "用于状态不处于允许充电状态"}
         self.area.charging_area.begin_charging(car_id)
         return {"code": 1, "message": "请求成功"}
+
+    # def pay_the_bill(self, car_id):
+    #     state = self.info.get_car_state(car_id)
+    #     if state != UserState.end:
+    #         return {"code": 0, "message": "用户不处于结束充电状态"}
+    #     # 还没有写具体的逻辑
+    #     self.info.del_car(car_id)
+    #     return {"code": 1, "message": "请求成功"}
 
 
 dispatching = Dispatch()

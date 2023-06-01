@@ -20,12 +20,12 @@ def decode_token(token):
         data = jwt.decode(token, key="hello_my_teammates", algorithms='HS256')
     except jwt.DecodeError:
         print("token解析失败")
-        return False
+        return False, "token解析失败"
     exp = data.pop('exp')
     if time.time() > exp:
         print('token已失效')
-        return False
-    return data.pop('user_id')
+        return False, 'token已失效，请重新登录'
+    return True, data.pop('user_id')
 
 
 def hash_password(password):

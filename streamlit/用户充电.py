@@ -120,6 +120,8 @@ def user_login():
             if data['code'] == 1:
                 st.session_state['user'] = phone
                 st.session_state['token'] = data['data']['token']
+                st.session_state['car'] = data['data']['car_id']
+                st.session_state['capacity'] = data['data']['car_capacity']
                 st.session_state['stage'] = "提交充电请求"
             else:
                 st.error(data['message'])

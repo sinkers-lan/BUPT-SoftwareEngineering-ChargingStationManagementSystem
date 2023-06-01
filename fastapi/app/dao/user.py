@@ -40,7 +40,7 @@ def login(user_name: str, hash_password: str):
                     "user_name": row[1],
                     "token": None,
                     "car_id": row[3],
-                    "capacity": row[4]
+                    "car_capacity": row[4]
                 }
             }
         else:

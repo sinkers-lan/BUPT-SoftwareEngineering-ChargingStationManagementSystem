@@ -66,7 +66,10 @@ class LogoutUser(BaseModel):
 
 
 @router.post("/logout")
-async def log_out(user: LogoutUser):
+async def log_out(user: LogoutUser, authorization: Annotated[Union[str, None], Header()] = None):
+    flag, info = utils.decode_token(authorization)
+    if not flag:
+        return {"code": 0, "message": info}
     pass
 
 
@@ -78,8 +81,10 @@ class ChargingRequest(BaseModel):
 
 @router.post("/chargingRequest")
 async def user_register(charging_request: ChargingRequest, authorization: Annotated[Union[str, None], Header()] = None):
-    user_id = utils.decode_token(authorization)
-    data = dispatching.new_car_come(user_id=user_id, car_id=charging_request.car_id, mode=charging_request.request_mode,
+    flag, info = utils.decode_token(authorization)
+    if not flag:
+        return {"code": 0, "message": info}
+    data = dispatching.new_car_come(user_id=info, car_id=charging_request.car_id, mode=charging_request.request_mode,
                                     degree=charging_request.request_amount)
     return data
 
@@ -90,7 +95,9 @@ class CarId(BaseModel):
 
 @router.post("/queryCarState")
 async def query_car_state(parm: CarId, authorization: Annotated[Union[str, None], Header()] = None):
-    user_id = utils.decode_token(authorization)
+    flag, info = utils.decode_token(authorization)
+    if not flag:
+        return {"code": 0, "message": info}
     car_id = parm.car_id
     data = dispatching.get_car_state(car_id)
     return data
@@ -102,7 +109,10 @@ class ChangeChargingMode(BaseModel):
 
 
 @router.post("/changeChargingMode")
-async def change_charging_mode(parm: ChangeChargingMode):
+async def change_charging_mode(parm: ChangeChargingMode, authorization: Annotated[Union[str, None], Header()] = None):
+    flag, info = utils.decode_token(authorization)
+    if not flag:
+        return {"code": 0, "message": info}
     return {
         "code": 1,
         "message": "请求成功",
@@ -121,7 +131,10 @@ class ChangeChargingAmount(BaseModel):
 
 
 @router.post("/changeChargingAmount")
-async def change_charging_amount(parm: ChangeChargingAmount):
+async def change_charging_amount(parm: ChangeChargingAmount, authorization: Annotated[Union[str, None], Header()] = None):
+    flag, info = utils.decode_token(authorization)
+    if not flag:
+        return {"code": 0, "message": info}
     return {
         "code": 1,
         "message": "请求成功"
@@ -130,12 +143,17 @@ async def change_charging_amount(parm: ChangeChargingAmount):
 
 @router.post("/beginCharging")
 async def begin_charging(parm: CarId, authorization: Annotated[Union[str, None], Header()] = None):
-    user_id = utils.decode_token(authorization)
+    flag, info = utils.decode_token(authorization)
+    if not flag:
+        return {"code": 0, "message": info}
     return dispatching.begin_charging(parm.car_id)
 
 
 @router.post("/getChargingState")
-async def get_charging_state(parm: CarId):
+async def get_charging_state(parm: CarId, authorization: Annotated[Union[str, None], Header()] = None):
+    flag, info = utils.decode_token(authorization)
+    if not flag:
+        return {"code": 0, "message": info}
     return {
         "code": 1,
         "message": "请求成功",
@@ -156,7 +174,10 @@ async def get_charging_state(parm: CarId):
 
 
 @router.post("/endCharging")
-async def end_charging(parm: CarId):
+async def end_charging(parm: CarId, authorization: Annotated[Union[str, None], Header()] = None):
+    flag, info = utils.decode_token(authorization)
+    if not flag:
+        return {"code": 0, "message": info}
     return {
         "code": 1,
         "message": "充电结束"
@@ -169,7 +190,10 @@ class ChangeCapacity(BaseModel):
 
 
 @router.post("/changeCapacity")
-async def change_capacity(parm: ChangeCapacity):
+async def change_capacity(parm: ChangeCapacity, authorization: Annotated[Union[str, None], Header()] = None):
+    flag, info = utils.decode_token(authorization)
+    if not flag:
+        return {"code": 0, "message": info}
     return {
         "code": 1,
         "message": "修改成功",
@@ -185,7 +209,10 @@ class GetTotalBill(BaseModel):
 
 
 @router.post("/getTotalBill")
-async def get_total_bill(pram: GetTotalBill):
+async def get_total_bill(pram: GetTotalBill, authorization: Annotated[Union[str, None], Header()] = None):
+    flag, info = utils.decode_token(authorization)
+    if not flag:
+        return {"code": 0, "message": info}
     return {
         "code": 1,
         "message": "查询成功",
@@ -215,7 +242,10 @@ class BillId(BaseModel):
 
 
 @router.post("/getDetailBill")
-async def get_detail_bill(pram: BillId):
+async def get_detail_bill(pram: BillId, authorization: Annotated[Union[str, None], Header()] = None):
+    flag, info = utils.decode_token(authorization)
+    if not flag:
+        return {"code": 0, "message": info}
     return {
         "code": 1,
         "message": "查询成功",
@@ -233,3 +263,12 @@ async def get_detail_bill(pram: BillId):
             "total_fee": 1.1
         }
     }
+
+
+@router.post("/getPayBill")
+async def get_pay_bill(pram: BillId, authorization: Annotated[Union[str, None], Header()] = None):
+    flag, info = utils.decode_token(authorization)
+    if not flag:
+        return {"code": 0, "message": info}
+    # dispatching.pay_the_bill(car_id)
+    pass
