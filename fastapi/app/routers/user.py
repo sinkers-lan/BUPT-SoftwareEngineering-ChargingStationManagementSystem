@@ -143,23 +143,24 @@ async def get_charging_state(parm: CarId, authorization: Annotated[Union[str, No
     flag, info = utils.decode_token(authorization)
     if not flag:
         return {"code": 0, "message": info}
-    return {
-        "code": 1,
-        "message": "请求成功",
-        "data": {
-            "car_id": "京...",
-            "bill_date": "YYYY-MM-DD",
-            "bill_id": 1,
-            "pile_id": 20,
-            "charge_amount": 27.0,
-            "charge_duration": 1.5,
-            "start_time": datetime.datetime.now(),
-            "end_time": datetime.datetime.now(),
-            "total_charge_fee": 1.1,
-            "total_service_fee": 1.1,
-            "total_fee": 1.1
-        }
-    }
+    return dispatching.get_the_bill(parm.car_id)
+    # return {
+    #     "code": 1,
+    #     "message": "请求成功",
+    #     "data": {
+    #         "car_id": "京...",
+    #         "bill_date": "YYYY-MM-DD",
+    #         "bill_id": 1,
+    #         "pile_id": 20,
+    #         "charge_amount": 27.0,
+    #         "charge_duration": 1.5,
+    #         "start_time": datetime.datetime.now(),
+    #         "end_time": datetime.datetime.now(),
+    #         "total_charge_fee": 1.1,
+    #         "total_service_fee": 1.1,
+    #         "total_fee": 1.1
+    #     }
+    # }
 
 
 @router.post("/endCharging")
@@ -180,6 +181,7 @@ async def change_capacity(parm: ChangeCapacity, authorization: Annotated[Union[s
     flag, info = utils.decode_token(authorization)
     if not flag:
         return {"code": 0, "message": info}
+    # dispatching.change_degree(parm.car_id, parm.car_capacity)
     return {
         "code": 1,
         "message": "修改成功",
@@ -256,5 +258,5 @@ async def get_pay_bill(pram: BillId, authorization: Annotated[Union[str, None], 
     flag, info = utils.decode_token(authorization)
     if not flag:
         return {"code": 0, "message": info}
-    # dispatching.pay_the_bill(car_id)
-    pass
+    return dispatching.pay_the_bill(pram.bill_id)
+

@@ -1,9 +1,11 @@
 import copy
+import datetime
 from typing import List, Optional, Dict
 from ..utils.my_time import virtual_time, VirtualTimer
 from ..utils import my_time, utils
 from enum import Enum
 from ..utils import config
+from ..dao import bill
 
 
 # print("service:", virtual_time)
@@ -147,6 +149,7 @@ class QQueue:
     def __init__(self, mode: Mode, max_len):
         self.mode = mode
         self.max_len = max_len
+        self.speed = 30.0 if mode == Mode.fast else 7.0
         self.__q: List[QInfo] = []
 
     def get_car_position(self, car_id):
@@ -178,6 +181,7 @@ class QQueue:
 
     def change_degree(self, index, degree):
         self.__q[index].degree = degree
+        self.__q[index].during = (degree / self.speed) * 60 * 60
 
 
 class ChargingStationQueue(QQueue):
@@ -193,13 +197,82 @@ class ChargingStation:
         self.mode = mode
         self.pile_id = pile_id
         if mode == Mode.fast:
-            self.speed = 30.0
+            self.power = 30.0
         else:
-            self.speed = 7.0
+            self.power = 7.0
         self.q_queue = ChargingStationQueue(mode)
         self.end_time: float = -1
         self.state: PileState = PileState.free
         self.timer: Optional[VirtualTimer] = None
+
+    def calculate_bill(self, start_time: float, charge_duration: float):
+        """
+
+        :param start_time: 开始计费的时间，单位为秒的浮点数
+        :param charge_duration: 充电时长，单位为秒的浮点数
+        :return:
+        """
+        peak_rate = config.PeakRate
+        off_peak_rate = config.OffPeakRate
+        normal_rate = config.NormalRate
+        peak_time = [10, 11, 12, 13, 14, 18, 19, 20]
+        off_peak_time = [23, 0, 1, 2, 3, 4, 5, 6]
+        charge_power = self.power
+        degree = charge_duration * charge_power / 3600
+        service_fee = degree * config.ServiceFeeRate
+        charge_fee = 0.0
+        # 首先，计算从开始时间到整点的费用
+        # 先将start_time转化为datetime
+        start_datetime = datetime.datetime.fromtimestamp(start_time)
+        # 然后取出整点的时间
+        start_hour = start_datetime.hour
+        # 然后，计算出结束时间的整点
+        end_datetime = datetime.datetime.fromtimestamp(start_time + charge_duration)
+        # 结束整点
+        end_hour = end_datetime.hour
+        # 如果开始整点和结束整点相同
+        if start_hour == end_hour:
+            # 如果开始时间属于高峰时间
+            if start_hour in peak_time:
+                charge_fee += charge_duration * peak_rate * charge_power / 3600
+            # 如果开始时间属于低谷时间
+            elif start_hour in off_peak_time:
+                charge_fee += charge_duration * off_peak_rate * charge_power / 3600
+            # 如果开始时间属于平常时间
+            else:
+                charge_fee += charge_duration * normal_rate * charge_power / 3600
+            return round(charge_fee, 2), round(service_fee, 2)
+        # 如果开始时间属于高峰时间
+        if start_hour in peak_time:
+            charge_fee += (3600 - start_datetime.minute * 60 - start_datetime.second) \
+                          * peak_rate * charge_power / 3600
+        # 如果开始时间属于低谷时间
+        elif start_hour in off_peak_time:
+            charge_fee += (3600 - start_datetime.minute * 60 - start_datetime.second) \
+                          * off_peak_rate * charge_power / 3600
+        # 如果开始时间属于平常时间
+        else:
+            charge_fee += (3600 - start_datetime.minute * 60 - start_datetime.second) \
+                          * normal_rate * charge_power / 3600
+        # 计算出从开始时间的整点到结束时间的整点的费用
+        for i in range(start_hour + 1, end_hour):
+            if i % 24 in peak_time:
+                charge_fee += peak_rate * charge_power
+            elif i % 24 in off_peak_time:
+                charge_fee += off_peak_rate * charge_power
+            else:
+                charge_fee += normal_rate * charge_power
+        # 最后，计算从整点到结束时间的费用
+        # 如果结束时间属于高峰时间
+        if end_hour % 24 in peak_time:
+            charge_fee += (end_datetime.minute * 60 + end_datetime.second) * peak_rate * charge_power / 3600
+        # 如果结束时间属于低谷时间
+        elif end_hour % 24 in off_peak_time:
+            charge_fee += (end_datetime.minute * 60 + end_datetime.second) * off_peak_rate * charge_power / 3600
+        # 如果结束时间属于平常时间
+        else:
+            charge_fee += (end_datetime.minute * 60 + end_datetime.second) * normal_rate * charge_power / 3600
+        return round(charge_fee, 2), round(service_fee, 2)
 
     def add_car(self, q_info: QInfo) -> UserState:
         # 设置队列的结束时间
@@ -229,6 +302,12 @@ class ChargingStation:
             # 启动定时器
             self.timer = my_time.start_timer(first_info.during, callback=dispatching.a_car_finish,
                                              args=(self.pile_id, self.mode, car_id))
+            # 生成账单
+            during = first_info.during
+            charge_fee, service_fee = self.calculate_bill(virtual_time.get_current_time(), during)
+            bill_ls = bill.create_bill(car_id, self.pile_id, first_info.degree, first_info.during, charge_fee,
+                                       service_fee)
+            charging_info.set_bill_id(car_id, bill_ls)
         else:
             raise Exception("You are not the first one in the charging queue, can not start charging")
 
@@ -251,8 +330,19 @@ class ChargingStation:
         # ①②结束充电
         if self.state != PileState.using:
             raise Exception("Pile is not charging, can not end charging")
-        # 结束定时器
-        self.timer.terminate()
+        if self.timer.running:
+            # ②用户终止充电
+            # 结束定时器
+            self.timer.terminate()
+            # 更改账单
+            print("修改账单")
+            end_time = virtual_time.get_current_time()
+            bill_ls = charging_info.get_bill_id(car_id)
+            start_time = bill.get_start_time(bill_ls)
+            charge_duration = end_time - start_time
+            charge_amount = charge_duration * self.power / 3600
+            charge_fee, service_fee = self.calculate_bill(start_time, charge_duration)
+            bill.update_bill(bill_ls, charge_fee, service_fee, end_time, charge_duration, charge_amount)
         # 改变充电桩状态
         self.state = PileState.free
         # 出队列
@@ -649,13 +739,24 @@ class Dispatch:
         self.info.set_car_state(car_id, UserState.charging)
         return {"code": 1, "message": "请求成功"}
 
-    # def pay_the_bill(self, car_id):
-    #     state = self.info.get_car_state(car_id)
-    #     if state != UserState.end:
-    #         return {"code": 0, "message": "用户不处于结束充电状态"}
-    #     # 还没有写具体的逻辑
-    #     self.info.del_car(car_id)
-    #     return {"code": 1, "message": "请求成功"}
+    def get_the_bill(self, car_id):
+        state = self.info.get_car_state(car_id)
+        if state != UserState.end:
+            return {"code": 0, "message": "用户不处于结束充电状态"}
+        bill_ls = self.info.get_bill_id(car_id)
+        data = bill.get_bill(bill_ls)
+        return {"code": 1, "message": "查询成功", "data": data}
+
+    def pay_the_bill(self, bill_ls):
+        car_id = bill.get_car_id(bill_ls)
+        state = self.info.get_car_state(car_id)
+        if state != UserState.end:
+            return {"code": 0, "message": "用户不处于结束充电状态"}
+        ok, info = bill.pay_the_bill(bill_ls)
+        if not ok:
+            return {"code": 0, "message": info}
+        self.info.del_car(car_id)
+        return {"code": 1, "message": "支付成功"}
 
 
 dispatching = Dispatch()

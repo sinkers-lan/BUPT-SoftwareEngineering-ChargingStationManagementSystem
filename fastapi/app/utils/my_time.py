@@ -7,7 +7,7 @@ from typing import Tuple
 class VirtualTime:
     def __init__(self):
         self.start_time = time.time()
-        self.time_multiplier = 100
+        self.time_multiplier = 1
         self.current_virtual_time = time.time()
         self.is_start = False
 
@@ -19,6 +19,7 @@ class VirtualTime:
                 virtual_elapsed_time = elapsed_time * self.time_multiplier
                 self.current_virtual_time = self.start_time + virtual_elapsed_time
                 time.sleep(0.1)  # 调整更新间隔
+                # print(self.get_current_datetime())
 
         if not self.is_start:
             # 创建并启动后台线程
