@@ -8,7 +8,7 @@ import json
 HOST = "http://127.0.0.1:8002"
 
 
-def post(my_json: dict, path: str, token=None):
+def post(my_json: dict, path: str, token=None) -> dict:
     # print(token)
     if token is not None:
         headers = {

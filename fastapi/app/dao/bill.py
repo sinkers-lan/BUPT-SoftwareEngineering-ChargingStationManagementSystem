@@ -95,14 +95,14 @@ def get_bill(bill_ls):
         }
 
 
-def get_all_bill(date: str):
+def get_all_bill(car_id: str, date: str = None):
     """如果没有传入日期，就返回所有的账单。如果bill_date==date，就返回当天的账单"""
     if date is None:
         cursor = my_connect.c.execute(f"select bill_ls,car_id,bill_date,pile_id, \
-        start_time,end_time,total_fee,pay_state from bill")
+        start_time,end_time,total_fee,pay_state from bill where car_id='{car_id}'")
     else:
         cursor = my_connect.c.execute(f"select bill_ls,car_id,bill_date,pile_id, \
-        start_time,end_time,total_fee,pay_state from bill where bill_date='{date}'")
+        start_time,end_time,total_fee,pay_state from bill where car_id='{car_id}' and bill_date='{date}'")
     result = []
     for row in cursor:
         result.append({
@@ -115,6 +115,7 @@ def get_all_bill(date: str):
             "total_fee": row[6],
             "pay_state": row[7],
         })
+        # print(result)
     return result
 
 
@@ -139,7 +140,8 @@ def get_car_id(bill_ls: str):
         return row[0]
 
 
-def update_bill(bill_ls: str, total_charge_fee: float, total_service_fee: float, end_time: float, charge_duration: float, charge_amount: float):
+def update_bill(bill_ls: str, total_charge_fee: float, total_service_fee: float, end_time: float,
+                charge_duration: float, charge_amount: float):
     total_fee = total_charge_fee + total_service_fee
     # print("when update bill, end_time is", utils.formate_datetime_f(end_time), utils.formate_datetime_s(end_time))
     my_connect.c.execute(f"UPDATE bill set total_charge_fee = {total_charge_fee},total_service_fee = {total_service_fee}, \

@@ -75,6 +75,22 @@ def get_pay_bill():
     st.write(data_)
 
 
+def get_total_bill():
+    data = {
+        "car_id": st.session_state['car']
+    }
+    data_ = utils.post(data, path="/user/getTotalBill", token=st.session_state['token'])
+    st.write(data_)
+
+
+def get_detail_bill():
+    data = {
+        "bill_id": st.session_state['car']
+    }
+    data_ = utils.post(data, path="/user/getDetailBill", token=st.session_state['token'])
+    st.write(data_)
+
+
 if "car" not in st.session_state:
     st.write("请先登录")
 else:
@@ -86,3 +102,4 @@ else:
     st.button("changeChargingAmount", on_click=change_charging_amount)
     st.button("getChargingState", on_click=get_charging_state)
     st.button("getPayBill", on_click=get_pay_bill)
+    st.button("getTotalBill", on_click=get_total_bill)

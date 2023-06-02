@@ -750,12 +750,13 @@ class Dispatch:
     def pay_the_bill(self, bill_ls):
         car_id = bill.get_car_id(bill_ls)
         state = self.info.get_car_state(car_id)
-        if state != UserState.end:
-            return {"code": 0, "message": "用户不处于结束充电状态"}
+        if state != UserState.end and state != UserState.free:
+            return {"code": 0, "message": "用户不处于结束充电状态或空闲状态"}
         ok, info = bill.pay_the_bill(bill_ls)
         if not ok:
             return {"code": 0, "message": info}
-        self.info.del_car(car_id)
+        if state == UserState.end:
+            self.info.del_car(car_id)
         return {"code": 1, "message": "支付成功"}
 
 

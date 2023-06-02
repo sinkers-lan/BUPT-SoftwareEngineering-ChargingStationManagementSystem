@@ -2,7 +2,7 @@
 import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from typing import Union
+from typing import Union, Optional
 from fastapi import Header
 from typing_extensions import Annotated
 
@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from app.utils import utils
 from app.dao import user as user_dao
+from app.dao import bill as bill_dao
 from app.service.user import UserState
 from app.service.user import dispatching
 from app.dependencies import get_token_header
@@ -144,23 +145,6 @@ async def get_charging_state(parm: CarId, authorization: Annotated[Union[str, No
     if not flag:
         return {"code": 0, "message": info}
     return dispatching.get_the_bill(parm.car_id)
-    # return {
-    #     "code": 1,
-    #     "message": "请求成功",
-    #     "data": {
-    #         "car_id": "京...",
-    #         "bill_date": "YYYY-MM-DD",
-    #         "bill_id": 1,
-    #         "pile_id": 20,
-    #         "charge_amount": 27.0,
-    #         "charge_duration": 1.5,
-    #         "start_time": datetime.datetime.now(),
-    #         "end_time": datetime.datetime.now(),
-    #         "total_charge_fee": 1.1,
-    #         "total_service_fee": 1.1,
-    #         "total_fee": 1.1
-    #     }
-    # }
 
 
 @router.post("/endCharging")
@@ -193,7 +177,7 @@ async def change_capacity(parm: ChangeCapacity, authorization: Annotated[Union[s
 
 class GetTotalBill(BaseModel):
     car_id: str
-    bill_date: datetime.date
+    bill_date: Optional[datetime.date] = None
 
 
 @router.post("/getTotalBill")
@@ -204,24 +188,7 @@ async def get_total_bill(pram: GetTotalBill, authorization: Annotated[Union[str,
     return {
         "code": 1,
         "message": "查询成功",
-        "data": {
-            "bill_list": [
-                {
-                    "car_id": "京...",
-                    "bill_date": "YYYY-MM-DD",
-                    "bill_id": 1,
-                    "pile_id": 20,
-                    "charge_amount": 27.0,
-                    "charge_duration": 1.5,
-                    "start_time": datetime.datetime.now(),
-                    "end_time": datetime.datetime.now(),
-                    "total_charge_fee": 1.1,
-                    "total_service_fee": 1.1,
-                    "total_fee": 1.1
-                },
-                {}
-            ]
-        }
+        "data": bill_dao.get_all_bill(pram.car_id, pram.bill_date)
     }
 
 
@@ -237,19 +204,7 @@ async def get_detail_bill(pram: BillId, authorization: Annotated[Union[str, None
     return {
         "code": 1,
         "message": "查询成功",
-        "data": {
-            "car_id": "京...",
-            "bill_date": "YYYY-MM-DD",
-            "bill_id": 1,
-            "pile_id": 20,
-            "charge_amount": 27.0,
-            "charge_duration": 1.5,
-            "start_time": datetime.datetime.now(),
-            "end_time": datetime.datetime.now(),
-            "total_charge_fee": 1.1,
-            "total_service_fee": 1.1,
-            "total_fee": 1.1
-        }
+        "data": bill_dao.get_bill(pram.bill_id)
     }
 
 
@@ -259,4 +214,3 @@ async def get_pay_bill(pram: BillId, authorization: Annotated[Union[str, None], 
     if not flag:
         return {"code": 0, "message": info}
     return dispatching.pay_the_bill(pram.bill_id)
-
