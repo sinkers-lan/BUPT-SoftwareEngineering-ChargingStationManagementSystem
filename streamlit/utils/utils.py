@@ -1,3 +1,4 @@
+import datetime
 from enum import Enum
 
 import requests
@@ -36,3 +37,7 @@ def ft_to_mode(mode: str):
         return "慢充"
     else:
         return mode
+
+
+def format_datetime_s(time_stamp: float):
+    return datetime.datetime.fromtimestamp(time_stamp).strftime("%Y-%m-%d %H:%M:%S")

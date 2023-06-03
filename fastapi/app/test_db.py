@@ -17,8 +17,8 @@ def logon():
 def get_bill():
     virtual_time.start()
     data = bill_dao.get_bill(1)
-    data["start_time"] = utils.formate_datetime_f(data["start_time"])
-    data["end_time"] = utils.formate_datetime_f(data["end_time"])
+    data["start_time"] = utils.format_datetime_f(data["start_time"])
+    data["end_time"] = utils.format_datetime_f(data["end_time"])
     print(data)
 
 

@@ -83,7 +83,7 @@ class VirtualTimer:
         if not virtual_time.is_start:
             raise Exception('Virtual time has not yet started')
         self.running = True
-        self.thread = threading.Thread(target=check_time_and_callback, daemon=True)
+        self.thread = threading.Thread(target=check_time_and_callback, daemon=True, name='timer')
         self.thread.start()
         print("定时器已启动")
 

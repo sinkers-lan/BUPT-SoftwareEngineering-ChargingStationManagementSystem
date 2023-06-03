@@ -18,6 +18,7 @@ def get_detail_bill(bill_id):
         "bill_id": bill_id
     }
     data_ = utils.post(data, path="/user/getDetailBill", token=st.session_state['token'])
+    # st.write("data", data_)
     if data_['code'] == 0:
         st.error(data_['message'])
     return data_.get('data', {})
@@ -38,7 +39,7 @@ def get_pay_bill(bill_id):
 
 
 # 设置页面标题和布局
-st.markdown('#### 电车充电账单信息')
+st.markdown('### 电车充电账单信息')
 st.markdown('---')
 
 if "car" not in st.session_state:
@@ -55,6 +56,9 @@ else:
 
 st.markdown('---')
 
+if len(all_bills) == 0:
+    st.warning('没有查到账单信息')
+    st.stop()
 for bill in all_bills:
     st.write('**账单ID:**', bill['bill_id'])
     col1, col2 = st.columns(2)

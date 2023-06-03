@@ -1,5 +1,6 @@
 import copy
 import datetime
+import threading
 from typing import List, Optional, Dict
 from ..utils.my_time import virtual_time, VirtualTimer
 from ..utils import my_time, utils
@@ -319,38 +320,32 @@ class ChargingStation:
         :param car_id: car_id
         :return: None
         """
-        # 检查是否是正确的操作
-        first_info = self.q_queue.get_first_one()
-        # 如果他不是第一位, 或是第一位但充电桩不在充电
-        if (first_info.car_id != car_id) or (first_info.car_id == car_id and self.state == PileState.free):
-            # ③取消充电
-            position = self.q_queue.get_car_position(car_id)
-            self.q_queue.pop(position)
-            return
-        # ①②结束充电
-        if self.state != PileState.using:
-            raise Exception("Pile is not charging, can not end charging")
-        if self.timer.running:
-            # ②用户终止充电
+        # ① 由系统定时器结束充电发起。 ② 由用户终止充电。都需要停止充电
+        if self.state == PileState.using:
             # 结束定时器
             self.timer.terminate()
-            # 更改账单
-            print("修改账单")
-            end_time = virtual_time.get_current_time()
-            bill_ls = charging_info.get_bill_id(car_id)
-            start_time = bill.get_start_time(bill_ls)
-            charge_duration = end_time - start_time
-            charge_amount = charge_duration * self.power / 3600
-            charge_fee, service_fee = self.calculate_bill(start_time, charge_duration)
-            bill.update_bill(bill_ls, charge_fee, service_fee, end_time, charge_duration, charge_amount)
-        # 改变充电桩状态
-        self.state = PileState.free
+            # 改变充电桩状态
+            self.state = PileState.free
+            # ② 由用户终止充电。更改账单
+            if threading.current_thread().getName() != "timer":
+                print("修改账单")
+                end_time = virtual_time.get_current_time()
+                bill_ls = charging_info.get_bill_id(car_id)
+                start_time = bill.get_start_time(bill_ls)
+                charge_duration = end_time - start_time
+                charge_amount = charge_duration * self.power / 3600
+                charge_fee, service_fee = self.calculate_bill(start_time, charge_duration)
+                bill.update_bill(bill_ls, charge_fee, service_fee, end_time, charge_duration, charge_amount)
         # 出队列
-        self.q_queue.pop()
+        position = self.q_queue.get_car_position(car_id)
+        self.q_queue.pop(position)
         # 更改预计排队时间
         if self.q_queue.get_len() == 0:
             self.end_time = -1
         else:
+            self.end_time = virtual_time.get_current_time()
+            for q_info in self.q_queue.get_queue():
+                self.end_time += q_info.during
             # 把后一个车的状态设置为允许充电
             q_info = self.q_queue.get_first_one()
             charging_info.set_car_state(q_info.car_id, UserState.allow)
@@ -372,7 +367,7 @@ class ChargingAreaFastOrSlow:
             self.pile_num = config.TrickleChargingPileNum
             keys = [i * 10 + 1 for i in range(1, config.TrickleChargingPileNum + 1)]
         values = [ChargingStation(mode, i) for i in keys]
-        self.pile_dict = dict(zip(keys, values))
+        self.pile_dict: Dict[int, ChargingStation] = dict(zip(keys, values))
 
     def has_vacancy(self):
         for station in self.pile_dict.values():
@@ -556,14 +551,14 @@ class Dispatch:
             car_state = car_state.value
             car_position = self.area.waiting_area.get_car_position(car_id) + 1
             queue_num = self.info.get_queue_num(car_id)
-            request_time = utils.formate_datetime_s(self.info.get_request_time(car_id))
+            request_time = utils.format_datetime_s(self.info.get_request_time(car_id))
             mode = self.info.get_mode(car_id)
             amount = self.info.get_amount(car_id)
         elif car_state == UserState.end:
             car_state = car_state.value
             car_position = 1
             queue_num = self.info.get_queue_num(car_id)
-            request_time = utils.formate_datetime_s(self.info.get_request_time(car_id))
+            request_time = utils.format_datetime_s(self.info.get_request_time(car_id))
             pile_id = self.info.get_pile_id(car_id)
             mode = self.info.get_mode(car_id)
             amount = self.info.get_amount(car_id)
@@ -571,7 +566,7 @@ class Dispatch:
             car_state = car_state.value
             car_position = self.area.charging_area.get_your_position(car_id) + 1
             queue_num = self.info.get_queue_num(car_id)
-            request_time = utils.formate_datetime_s(self.info.get_request_time(car_id))
+            request_time = utils.format_datetime_s(self.info.get_request_time(car_id))
             pile_id = self.info.get_pile_id(car_id)
             mode = self.info.get_mode(car_id)
             amount = self.info.get_amount(car_id)
@@ -635,7 +630,7 @@ class Dispatch:
                 "car_position": car_position + 1,
                 "car_state": self.info.get_car_state(car_id).value,
                 "queue_num": self.info.get_queue_num(car_id),
-                "request_time": utils.formate_datetime_s(self.info.get_request_time(car_id)),
+                "request_time": utils.format_datetime_s(self.info.get_request_time(car_id)),
             }
         }
 
@@ -650,6 +645,7 @@ class Dispatch:
             user_state = self.area.charging_area.add_car(mode, pile_id, q_info)
             # 改变用户状态
             self.info.set_car_state(q_info.car_id, user_state)
+            self.info.set_pile_id(q_info.car_id, pile_id)
 
     def a_car_finish(self, pile_id, mode, car_id):
         # 把mode从字符串转换成枚举类型
@@ -678,15 +674,19 @@ class Dispatch:
             mode = self.info.get_mode(car_id)
             self.__call_out(pile_id, mode)
             return {"code": 1, "message": "成功结束充电"}
-        elif state == UserState.waiting:
-            # 取消充电
-            self.area.waiting_area.cancel_waiting(car_id)
-            # 改变用户状态
-            self.info.del_car(car_id)
-            return {"code": 1, "message": "成功取消充电"}
         elif state == UserState.waiting_for_charging or state == UserState.allow:
             # 取消充电
             self.area.charging_area.end_charging(car_id)
+            # 叫号
+            pile_id = self.info.get_pile_id(car_id)
+            mode = self.info.get_mode(car_id)
+            self.__call_out(pile_id, mode)
+            # 改变用户状态
+            self.info.del_car(car_id)
+            return {"code": 1, "message": "成功取消充电"}
+        elif state == UserState.waiting:
+            # 取消充电
+            self.area.waiting_area.cancel_waiting(car_id)
             # 改变用户状态
             self.info.del_car(car_id)
             return {"code": 1, "message": "成功取消充电"}
@@ -727,14 +727,14 @@ class Dispatch:
                 "car_position": car_position + 1,
                 "car_state": self.info.get_car_state(car_id).value,
                 "queue_num": self.info.get_queue_num(car_id),
-                "request_time": utils.formate_datetime_s(self.info.get_request_time(car_id)),
+                "request_time": utils.format_datetime_s(self.info.get_request_time(car_id)),
             }
         }
 
     def begin_charging(self, car_id):
         state = self.info.get_car_state(car_id)
         if state != UserState.allow:
-            return {"code": 0, "massage": "用于状态不处于允许充电状态"}
+            return {"code": 0, "message": "用于状态不处于允许充电状态"}
         self.area.charging_area.begin_charging(car_id)
         self.info.set_car_state(car_id, UserState.charging)
         return {"code": 1, "message": "请求成功"}

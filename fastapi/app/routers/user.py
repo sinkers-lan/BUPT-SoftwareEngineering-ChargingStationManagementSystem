@@ -33,7 +33,7 @@ class LoginUser(BaseModel):
 @router.post("/login")
 async def user_login(user: LoginUser):
     """用户登录"""
-    print(user.user_name, user.password)
+    print(user.user_name, "login")
     """验证用户名密码"""
     psw = utils.hash_password(user.password)
     info = user_dao.login(user.user_name, psw)
@@ -52,7 +52,7 @@ class LogonUser(BaseModel):
 @router.post("/register")
 async def user_register(user: LogonUser):
     """用户注册"""
-    print(user.user_name, user.password, user.car_id, user.capacity)
+    print(user.user_name, "register")
     """验证用户名在数据库中是否有重复，如果重复则返回失败信息"""
     psw = utils.hash_password(user.password)
     info = user_dao.logon(user.user_name, psw, user.car_id, user.capacity)
