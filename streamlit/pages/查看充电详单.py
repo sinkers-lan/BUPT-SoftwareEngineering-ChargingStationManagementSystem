@@ -1,7 +1,5 @@
 from utils import utils
 import streamlit as st
-import json
-import datetime
 
 
 def get_total_bill(date=None):
@@ -42,6 +40,10 @@ def get_pay_bill(bill_id):
 # 设置页面标题和布局
 st.markdown('#### 电车充电账单信息')
 st.markdown('---')
+
+if "car" not in st.session_state:
+    st.write("请先登录")
+    st.stop()
 
 # 创建表格来展示账单摘要信息
 show_all = st.checkbox('显示所有账单')

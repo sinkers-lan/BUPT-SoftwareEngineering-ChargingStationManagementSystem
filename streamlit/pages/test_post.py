@@ -6,7 +6,6 @@ def query_car_state():
     data = {
         "car_id": st.session_state['car']
     }
-    # print(data)
     data_ = utils.post(data, path="/user/queryCarState", token=st.session_state['token'])
     st.write(data_)
 
