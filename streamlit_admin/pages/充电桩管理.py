@@ -1,4 +1,5 @@
 import streamlit as st
+from typing import List
 import asyncio
 import requests
 import json
@@ -6,6 +7,7 @@ import datetime
 import threading
 from utils import utils
 
+HOST='http://10.28.136.251:8002'
 st.set_page_config(
     page_title="显示充电桩状态",
     page_icon="👋",
@@ -26,12 +28,11 @@ if 'slow_pile_id' not in st.session_state:
 def transform():
     pile_label = []
     amount = st.session_state.get('amount')
-    fast_pile_id = st.session_state.get('fast_pile_id')
-    slow_pile_id = st.session_state.get('slow_pile_id')
-    pile_list = fast_pile_id + slow_pile_id
-    fast_list = [num / 10 for num in fast_pile_id]
+    fast_pile_id_list: List = st.session_state.get('fast_pile_id')
+    slow_pile_id_list: List = st.session_state.get('slow_pile_id')
+    pile_list = fast_pile_id_list + slow_pile_id_list
     for i in range(1, amount + 1):
-        if i in fast_list:
+        if i <= len(fast_pile_id_list):
             pile_label.append("快充充电桩" + chr(64 + i))
         else:
             pile_label.append("慢充充电桩" + chr(64 + i))
@@ -51,38 +52,28 @@ def send_post_request(pile_id, data_list):
         data_list = None
         return data_list
 
+def query_pile_state(pile_id):
+    my_json = {'pile_id': pile_id}
+    data = utils.post(my_json, "/admin/queryPileState", st.session_state['token'])
+    if data['code'] == 1:
+        target = data['data']
+        target['pile_id'] = pile_id
+        return target
+    else:
+        st.error(data['message'])
 
 def get_data():
-    # print("==get_data==")
-    # print(datetime.datetime.now().strftime("%H:%M:%S.%f"))
-    data_list = []
     pile_list, pile_label = transform()
     tab_list = st.tabs(pile_label)
-    # 创建线程列表
-    # threads = []
-    for pile_id in pile_list:
-        # thread = threading.Thread(target=send_post_request, args=(pile_id, data_list))
-        # threads.append(thread)
-        # thread.start()
-        send_post_request(pile_id, data_list)
-    # 等待所有线程执行完毕
-    # for thread in threads:
-    #     thread.join()
-    fast_pile_list=[]
-    slow_pile_list=[]
-    for data in data_list:
-        #快充
-        if data['pile_id']%10==0:
-            fast_pile_list.append(data)
-        else:
-            slow_pile_list.append(data)
-
+    fast_pile_list = []
+    slow_pile_list = []
+    for fast_pile_id in st.session_state['fast_pile_id']:
+        fast_pile_list.append(query_pile_state(fast_pile_id))
+    for slow_pile_id in st.session_state['slow_pile_id']:
+        slow_pile_list.append(query_pile_state(slow_pile_id))
     fast_list = sorted(fast_pile_list, key=lambda x: x['pile_id'])
     slow_list = sorted(slow_pile_list, key=lambda x: x['pile_id'])
-    data_list=fast_list+slow_list
-    # 返回结果
-    # print(datetime.datetime.now().strftime("%H:%M:%S.%f"))
-    # print("=======")
+    data_list = fast_list + slow_list
     return data_list, tab_list
 
 
@@ -115,7 +106,7 @@ if st.session_state['stage'] == 'login':
                 headers = {
                     "Authorization": token
                 }
-                data = utils.post({}, "/admin/queryPile", token)
+                data = utils.post({}, "/admin/queryPileAmount", token)
                 if data['code'] == 1:
                     st.session_state['amount'] = data['data']['amount']
                     st.session_state['fast_pile_id'] = data['data']['fast_pile_id']
@@ -142,10 +133,10 @@ else:
             "Authorization": st.session_state['token']
         }
         data = utils.post(my_json, "/admin/powerOn", st.session_state['token'])
-        if data['code'] == '0':
+        if data['code'] == 0:
             st.error(data['message'])
         else:
-            st.success(data['message'])
+            st.success("成功开启充电桩")
 
 
     def powerOff(args):
@@ -154,10 +145,10 @@ else:
             "Authorization": st.session_state['token']
         }
         data = utils.post(my_json, "/admin/powerOff", st.session_state['token'])
-        if data['code'] == '0':
+        if data['code'] == 0:
             st.error(data['message'])
         else:
-            st.success(data['message'])
+            st.success("成功关闭充电桩")
 
 
     for tab, tab_content in zip(tab_list, data_list):
@@ -184,7 +175,7 @@ else:
         }
         data = utils.post(my_json, "/admin/setPrice", st.session_state['token'])
         if data['code'] == 1:
-            st.success(data['message'])
+            st.success("成功设置充电桩价格")
         else:
             st.error(data['message'])
 

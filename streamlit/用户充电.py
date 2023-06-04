@@ -43,6 +43,8 @@ if 'your_position' not in st.session_state:
     st.session_state['your_position'] = None
 if 'hao' not in st.session_state:
     st.session_state['hao'] = None
+if 'pile' not in st.session_state:
+    st.session_state['pile'] = None
 if "token" not in st.session_state:
     st.session_state['token'] = None
 if "backward" not in st.session_state:
@@ -310,6 +312,7 @@ def show_hao():
     if data_['data']['pile_id'] is not None:
         st.write("排队号:", st.session_state['hao'], "，充电模式:", st.session_state['mode'],
                  "，请求充电量:", st.session_state['degree'], "度", "，充电桩号:", data_['data']['pile_id'])
+        st.session_state['pile'] = data_['data']['pile_id']
     else:
         st.write("您的排队号码是:", st.session_state['hao'], "，您的充电模式:", st.session_state['mode'],
                  "，您的请求充电量：",
@@ -356,6 +359,12 @@ def get_front_num(now_state: str):
         st.error("未知状态", data_['data']['car_state'])
     if now_state != st.session_state['stage']:
         st.experimental_rerun()
+    # # 如果充电桩编号发生了变化，重新加载
+    # if data_['data']['pile_id'] != st.session_state['pile']:
+    #     st.session_state['pile'] = data_['data']['pile_id']
+    #     st.session_state['warning_info'] = "您已被调度到其他充电桩"
+    #     st.session_state['warning_flag'] = True
+    #     st.experimental_rerun()
     car_position = data_['data']['car_position']
     # 前车等待数量
     return car_position - 1
@@ -399,6 +408,8 @@ def wait():
         if front_num == 0:
             my_bar.progress(0.99, text=f"前车等待数量: 0")
         else:
+            if st.session_state['initial_queue_len'] == 0:
+                st.session_state['initial_queue_len'] = front_num
             percent = (st.session_state['initial_queue_len'] - front_num) / st.session_state['initial_queue_len']
             my_bar.progress(percent, text=f"前车等待数量: {front_num}")
         time.sleep(1)
@@ -554,15 +565,17 @@ def wait_for_charge():
 
     st.button("取消充电", on_click=cancel_on_click, use_container_width=True)
 
-    st.session_state['initial_queue_len'] = get_front_num(st.session_state['stage'])()
+    st.session_state['initial_queue_len'] = get_front_num(st.session_state['stage'])
 
     my_bar = st.progress(0)
     flag = True
     while flag:
-        front_num = get_front_num(st.session_state['stage'])()
+        front_num = get_front_num(st.session_state['stage'])
         if front_num == 0:
-            my_bar.progress(1.0, text=f"前车等待数量: 0")
+            my_bar.progress(0.99, text=f"前车等待数量: 0")
         else:
+            if st.session_state['initial_queue_len'] == 0:
+                st.session_state['initial_queue_len'] = front_num
             percent = (st.session_state['initial_queue_len'] - front_num) / st.session_state['initial_queue_len']
             my_bar.progress(percent, text=f"前车等待数量: {front_num}")
         time.sleep(10)

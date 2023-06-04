@@ -1,4 +1,5 @@
 import streamlit as st
+from typing import List
 import json
 import datetime
 import pandas as pd
@@ -37,16 +38,26 @@ def check_all_zeros(df):
 def transform():
     pile_label = []
     amount = st.session_state.get('amount')
-    fast_pile_id = st.session_state.get('fast_pile_id')
-    slow_pile_id = st.session_state.get('slow_pile_id')
-    pile_list = fast_pile_id + slow_pile_id
-    fast_list = [num / 10 for num in fast_pile_id]
+    fast_pile_id_list: List = st.session_state.get('fast_pile_id')
+    slow_pile_id_list: List = st.session_state.get('slow_pile_id')
+    pile_list = fast_pile_id_list + slow_pile_id_list
     for i in range(1, amount + 1):
-        if i in fast_list:
+        if i <= len(fast_pile_id_list):
             pile_label.append("快充充电桩" + chr(64 + i))
         else:
             pile_label.append("慢充充电桩" + chr(64 + i))
     return pile_list, pile_label
+
+
+def query_pile_report(pile_id, start_date, end_date):
+    my_json = {'pile_id': pile_id, 'start_date': start_date, 'end_date': end_date}
+    data = utils.post(my_json, "/admin/queryReport", st.session_state['token'])
+    if data['code'] == 1:
+        target = data['data']
+        target['pile_id'] = pile_id
+        return target
+    else:
+        st.error(data['message'])
 
 
 # 展示费用
@@ -138,43 +149,18 @@ def send_post_request(pile_id, start_date, end_date, data_list, header):
         data_list = None
         return data_list
 
-
 def get_data(start_date, end_date):
-    # print("==get_data==")
-    # print(datetime.datetime.now().strftime("%H:%M:%S.%f"))
     start_date = start_date.strftime("%Y-%m-%d")
     end_date = end_date.strftime("%Y-%m-%d")
-    data_list = []
-    pile_list, pile_label = transform()
-    token=st.session_state.get('token')
-    headers={
-        'Authorization':token
-    }
-    # 创建线程列表
-    # threads = []
-    for pile_id in pile_list:
-        # thread = threading.Thread(target=send_post_request, args=(pile_id, start_date, end_date, data_list, headers))
-        # threads.append(thread)
-        # thread.start()
-        send_post_request(pile_id, start_date, end_date, data_list, headers)
-    # 等待所有线程执行完毕
-    # for thread in threads:
-    #     thread.join()
-
-    print(data_list)
-    fast_pile_list=[]
-    slow_pile_list=[]
-    for data in data_list:
-        #快充
-        if data['pile_id']%10==0:
-            fast_pile_list.append(data)
-        else:
-            slow_pile_list.append(data)
+    fast_pile_list = []
+    slow_pile_list = []
+    for fast_pile_id in st.session_state['fast_pile_id']:
+        fast_pile_list.append(query_pile_report(fast_pile_id, start_date, end_date))
+    for slow_pile_id in st.session_state['slow_pile_id']:
+        slow_pile_list.append(query_pile_report(slow_pile_id, start_date, end_date))
     fast_list = sorted(fast_pile_list, key=lambda x: x['pile_id'])
     slow_list = sorted(slow_pile_list, key=lambda x: x['pile_id'])
-    data_list=fast_list+slow_list
-    print("===get data===")
-    print(data_list)
+    data_list = fast_list + slow_list
     return data_list
 
 
