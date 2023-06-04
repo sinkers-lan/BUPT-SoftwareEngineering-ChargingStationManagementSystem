@@ -91,3 +91,11 @@ def logon(user_name: str, hash_password: str, car_id: str, capacity: float) -> d
             "capacity": capacity
         }
     }
+
+
+def get_car_info(car_id: str):
+    """返回user_id, capacity"""
+    cursor = my_connect.c.execute(f"select user_id, capacity from user where car_id = '{car_id}'")
+    for row in cursor:
+        return row[0], row[1]
+    raise Exception("No such car_id")

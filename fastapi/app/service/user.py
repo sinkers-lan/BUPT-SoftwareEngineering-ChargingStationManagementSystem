@@ -7,6 +7,8 @@ from ..utils import my_time, utils
 from enum import Enum
 from ..utils import config
 from ..dao import bill
+import app.dao.user as user_dao
+import app.dao.admin as admin_dao
 
 
 # print("service:", virtual_time)
@@ -22,7 +24,7 @@ class UserState(Enum):
 
 class PileState(Enum):
     off = '关闭'
-    free = '空前'
+    free = '空闲'
     using = "使用中"
     damage = "损坏"
 
@@ -103,6 +105,22 @@ class ChargingInfo:
 
     def set_additional_bill_id(self, car_id, bill_id):
         self.__charging_info[car_id][Key.additional_bill_id] = bill_id
+
+    def get_all_car_info(self):
+        info_list = []
+        for car_id in self.__charging_info.keys():
+            user_id, car_capacity = user_dao.get_car_info(car_id)
+            info_dict = {
+                "user_id": user_id,
+                "car_capacity": car_capacity,
+                "request_amount": self.get_amount(car_id),
+                "request_mode": self.get_mode(car_id),
+                "wait_time": (virtual_time.get_current_time() - self.get_request_time(car_id)) / 3600,
+                "pile_id": self.get_pile_id(car_id),
+                "car_state": self.get_car_state(car_id)
+            }
+            info_list.append(info_dict)
+        return info_list
 
 
 charging_info = ChargingInfo()
@@ -192,9 +210,12 @@ class ChargingStationQueue(QQueue):
     def change_degree(self, index, degree):
         raise Exception("Can't change degree in charging area")
 
+    def clear(self):
+        self.__q.clear()
+
 
 class ChargingStation:
-    def __init__(self, mode: Mode, pile_id: int):
+    def __init__(self, mode: Mode, pile_id: int, state: PileState):
         self.mode = mode
         self.pile_id = pile_id
         if mode == Mode.fast:
@@ -203,77 +224,11 @@ class ChargingStation:
             self.power = 7.0
         self.q_queue = ChargingStationQueue(mode)
         self.end_time: float = -1
-        self.state: PileState = PileState.free
+        self.state: PileState = state
         self.timer: Optional[VirtualTimer] = None
 
     def calculate_bill(self, start_time: float, charge_duration: float):
-        """
-
-        :param start_time: 开始计费的时间，单位为秒的浮点数
-        :param charge_duration: 充电时长，单位为秒的浮点数
-        :return:
-        """
-        peak_rate = config.PeakRate
-        off_peak_rate = config.OffPeakRate
-        normal_rate = config.NormalRate
-        peak_time = [10, 11, 12, 13, 14, 18, 19, 20]
-        off_peak_time = [23, 0, 1, 2, 3, 4, 5, 6]
-        charge_power = self.power
-        degree = charge_duration * charge_power / 3600
-        service_fee = degree * config.ServiceFeeRate
-        charge_fee = 0.0
-        # 首先，计算从开始时间到整点的费用
-        # 先将start_time转化为datetime
-        start_datetime = datetime.datetime.fromtimestamp(start_time)
-        # 然后取出整点的时间
-        start_hour = start_datetime.hour
-        # 然后，计算出结束时间的整点
-        end_datetime = datetime.datetime.fromtimestamp(start_time + charge_duration)
-        # 结束整点
-        end_hour = end_datetime.hour
-        # 如果开始整点和结束整点相同
-        if start_hour == end_hour:
-            # 如果开始时间属于高峰时间
-            if start_hour in peak_time:
-                charge_fee += charge_duration * peak_rate * charge_power / 3600
-            # 如果开始时间属于低谷时间
-            elif start_hour in off_peak_time:
-                charge_fee += charge_duration * off_peak_rate * charge_power / 3600
-            # 如果开始时间属于平常时间
-            else:
-                charge_fee += charge_duration * normal_rate * charge_power / 3600
-            return round(charge_fee, 2), round(service_fee, 2)
-        # 如果开始时间属于高峰时间
-        if start_hour in peak_time:
-            charge_fee += (3600 - start_datetime.minute * 60 - start_datetime.second) \
-                          * peak_rate * charge_power / 3600
-        # 如果开始时间属于低谷时间
-        elif start_hour in off_peak_time:
-            charge_fee += (3600 - start_datetime.minute * 60 - start_datetime.second) \
-                          * off_peak_rate * charge_power / 3600
-        # 如果开始时间属于平常时间
-        else:
-            charge_fee += (3600 - start_datetime.minute * 60 - start_datetime.second) \
-                          * normal_rate * charge_power / 3600
-        # 计算出从开始时间的整点到结束时间的整点的费用
-        for i in range(start_hour + 1, end_hour):
-            if i % 24 in peak_time:
-                charge_fee += peak_rate * charge_power
-            elif i % 24 in off_peak_time:
-                charge_fee += off_peak_rate * charge_power
-            else:
-                charge_fee += normal_rate * charge_power
-        # 最后，计算从整点到结束时间的费用
-        # 如果结束时间属于高峰时间
-        if end_hour % 24 in peak_time:
-            charge_fee += (end_datetime.minute * 60 + end_datetime.second) * peak_rate * charge_power / 3600
-        # 如果结束时间属于低谷时间
-        elif end_hour % 24 in off_peak_time:
-            charge_fee += (end_datetime.minute * 60 + end_datetime.second) * off_peak_rate * charge_power / 3600
-        # 如果结束时间属于平常时间
-        else:
-            charge_fee += (end_datetime.minute * 60 + end_datetime.second) * normal_rate * charge_power / 3600
-        return round(charge_fee, 2), round(service_fee, 2)
+        return utils.calculate_bill(start_time, charge_duration, self.power)
 
     def add_car(self, q_info: QInfo) -> UserState:
         # 设置队列的结束时间
@@ -312,6 +267,17 @@ class ChargingStation:
         else:
             raise Exception("You are not the first one in the charging queue, can not start charging")
 
+    def __change_bill(self, car_id):
+        print("修改账单")
+        end_time = virtual_time.get_current_time()
+        bill_ls = charging_info.get_bill_id(car_id)
+        start_time = bill.get_start_time(bill_ls)
+        charge_duration = end_time - start_time
+        charge_amount = charge_duration * self.power / 3600
+        charge_fee, service_fee = self.calculate_bill(start_time, charge_duration)
+        bill.update_bill(bill_ls, charge_fee, service_fee, end_time, charge_duration, charge_amount)
+        return charge_amount
+
     # 由用户或系统发起
     def end_charging(self, car_id):
         """
@@ -328,14 +294,7 @@ class ChargingStation:
             self.state = PileState.free
             # ② 由用户终止充电。更改账单
             if threading.current_thread().getName() != "timer":
-                print("修改账单")
-                end_time = virtual_time.get_current_time()
-                bill_ls = charging_info.get_bill_id(car_id)
-                start_time = bill.get_start_time(bill_ls)
-                charge_duration = end_time - start_time
-                charge_amount = charge_duration * self.power / 3600
-                charge_fee, service_fee = self.calculate_bill(start_time, charge_duration)
-                bill.update_bill(bill_ls, charge_fee, service_fee, end_time, charge_duration, charge_amount)
+                self.__change_bill(car_id)
         # 出队列
         position = self.q_queue.get_car_position(car_id)
         self.q_queue.pop(position)
@@ -354,7 +313,54 @@ class ChargingStation:
         return self.end_time
 
     def has_vacancy(self):
-        return self.q_queue.get_len() < self.q_queue.max_len
+        print("充电桩状态:", self.state)
+        return self.q_queue.get_len() < self.q_queue.max_len and \
+            (self.state == PileState.free or self.state == PileState.using)
+
+    def damage(self) -> List[QInfo]:
+        self.end_time = -1
+        self.state = PileState.damage
+        q_info_list = self.q_queue.get_queue()
+        self.q_queue.clear()
+        if self.state == PileState.using:
+            # 结束定时器
+            self.timer.terminate()
+            # 更改账单
+            car_id = q_info_list[0].car_id
+            charge_amount = self.__change_bill(car_id)
+            # 更改正在充电的q_info
+            request_amount = charging_info.get_amount(car_id)
+            charging_info.set_amount(car_id, request_amount - charge_amount)
+        return q_info_list
+
+    def repair(self):
+        self.state = PileState.free
+
+    def take_out_all(self):
+        q_info_list = self.q_queue.get_queue()
+        if self.state == PileState.using:
+            q_info_list.pop()
+            for i in range(1, self.q_queue.get_len()):
+                self.q_queue.pop(i)
+        elif self.state == PileState.free:
+            self.q_queue.clear()
+        else:
+            raise Exception("Pile is damaged or closed")
+        return q_info_list
+
+    def turn_off(self):
+        print("关闭充电桩", self.pile_id)
+        if self.state == PileState.free:
+            self.state = PileState.off
+        else:
+            raise Exception("Can not turn off the pile")
+
+    def turn_on(self):
+        print("打开充电桩", self.pile_id)
+        if self.state == PileState.off:
+            self.state = PileState.free
+        else:
+            raise Exception("Can not turn on the pile")
 
 
 class ChargingAreaFastOrSlow:
@@ -366,7 +372,10 @@ class ChargingAreaFastOrSlow:
         else:
             self.pile_num = config.TrickleChargingPileNum
             keys = [i * 10 + 1 for i in range(1, config.TrickleChargingPileNum + 1)]
-        values = [ChargingStation(mode, i) for i in keys]
+        state_list = []
+        for pile_id in keys:
+            state_list.append(admin_dao.get_pile_state(pile_id))
+        values = [ChargingStation(mode, i, PileState(state)) for i, state in zip(keys, state_list)]
         self.pile_dict: Dict[int, ChargingStation] = dict(zip(keys, values))
 
     def has_vacancy(self):
@@ -397,6 +406,15 @@ class ChargingAreaFastOrSlow:
     def begin_charging(self, car_id):
         pile_id = charging_info.get_pile_id(car_id)
         self.pile_dict[pile_id].start_charging(car_id)
+
+    def redispatch(self):
+        q_info_list = []
+        for station in self.pile_dict.values():
+            if station.state == PileState.using or station.state == PileState.free:
+                q_info_list.extend(station.take_out_all())
+        q_info_list.sort(key=lambda x: x.queue_num)
+        print(q_info_list)
+        return q_info_list
 
 
 class ChargingArea:
@@ -443,6 +461,46 @@ class ChargingArea:
             self.fast_area.begin_charging(car_id)
         else:
             self.slow_area.begin_charging(car_id)
+
+    def pile_damage(self, pile_id) -> List[QInfo]:
+        if pile_id % 10 == 0:
+            return self.fast_area.pile_dict[pile_id].damage()
+        else:
+            return self.slow_area.pile_dict[pile_id].damage()
+
+    def pile_repair(self, pile_id):
+        if pile_id % 10 == 0:
+            self.fast_area.pile_dict[pile_id].repair()
+            return Mode.fast
+        else:
+            self.slow_area.pile_dict[pile_id].repair()
+            return Mode.slow
+
+    def redispatch(self, mode: Mode):
+        if mode == Mode.fast:
+            return self.fast_area.redispatch()
+        else:
+            return self.slow_area.redispatch()
+
+    def turn_off_the_pile(self, pile_id):
+        if pile_id % 10 == 0:
+            self.fast_area.pile_dict[pile_id].turn_off()
+        else:
+            self.slow_area.pile_dict[pile_id].turn_off()
+
+    def turn_on_the_pile(self, pile_id):
+        if pile_id % 10 == 0:
+            self.fast_area.pile_dict[pile_id].turn_on()
+            return Mode.fast
+        else:
+            self.slow_area.pile_dict[pile_id].turn_on()
+            return Mode.slow
+
+    def has_car(self, pile_id):
+        if pile_id % 10 == 0:
+            return self.fast_area.pile_dict[pile_id].q_queue.get_len() > 0
+        else:
+            return self.slow_area.pile_dict[pile_id].q_queue.get_len() > 0
 
 
 class WaitingQueue(QQueue):
@@ -518,6 +576,25 @@ class WaitingArea:
             return self.slow_queue.pop(position)
 
 
+class DamageArea:
+    def __init__(self):
+        self.queue: List[QInfo] = []
+        self.mode: Optional[Mode] = None
+
+    def add_queue(self, q_info_list: List[QInfo]):
+        self.queue.extend(q_info_list)
+        self.mode = q_info_list[0].mode
+
+    def is_damage(self, mode):
+        return self.mode == mode
+
+    def pop(self):
+        q_info = self.queue.pop(0)
+        if len(self.queue) == 0:
+            self.mode = None
+        return q_info
+
+
 class AllArea:
     def __init__(self):
         self.charging_area = ChargingArea()
@@ -536,6 +613,7 @@ class Dispatch:
         self.area: AllArea = AllArea()
         self.info: ChargingInfo = charging_info
         self.q_info_factory: QInfoFactory = QInfoFactory()
+        self.damage_area: DamageArea = DamageArea()
 
     def get_car_state(self, car_id):
         car_state = self.info.get_car_state(car_id)
@@ -637,15 +715,21 @@ class Dispatch:
     def __call_out(self, pile_id, mode):
         # 把mode从字符串转换成枚举类型
         mode = Mode(mode)
+        # 如果有损坏区有匹配模式待叫号的车辆
+        if self.damage_area.is_damage(mode):
+            # 获取到最先的用户,并出队列
+            q_info = self.damage_area.pop()
         # 如果有等候区有匹配模式待叫号的车辆
-        if self.area.waiting_area.has_car(mode):
+        elif self.area.waiting_area.has_car(mode):
             # 获取到最先的用户,并出队列
             q_info = self.area.waiting_area.call_out(mode)
-            # 放入充电桩队列
-            user_state = self.area.charging_area.add_car(mode, pile_id, q_info)
-            # 改变用户状态
-            self.info.set_car_state(q_info.car_id, user_state)
-            self.info.set_pile_id(q_info.car_id, pile_id)
+        else:
+            return
+        # 放入充电桩队列
+        user_state = self.area.charging_area.add_car(mode, pile_id, q_info)
+        # 改变用户状态
+        self.info.set_car_state(q_info.car_id, user_state)
+        self.info.set_pile_id(q_info.car_id, pile_id)
 
     def a_car_finish(self, pile_id, mode, car_id):
         # 把mode从字符串转换成枚举类型
@@ -758,6 +842,64 @@ class Dispatch:
         if state == UserState.end:
             self.info.del_car(car_id)
         return {"code": 1, "message": "支付成功"}
+
+    def pile_damage(self, pile_id):
+        # 通知充电区更改充电桩状态，结束正在充电的车并生成账单，得到充电队列
+        q_info_list = self.area.charging_area.pile_damage(pile_id)
+        # 把充电队列加入damage区
+        self.damage_area.add_queue(q_info_list)
+        return {"code": 1, "message": "请求成功"}
+
+    def pile_repair(self, pile_id):
+        # 通知损坏的充电桩更改状态为空闲
+        mode = self.area.charging_area.pile_repair(pile_id)
+        # 将所有同mode的充电区中不在充电的车的q_info队列取出
+        q_info_list = self.area.charging_area.redispatch(mode)
+        # 把充电队列加入到各个充电桩中
+        for q_info in q_info_list:
+            self.__add_car(q_info)
+        while self.area.charging_area.has_vacancy(mode) and self.area.waiting_area.has_car(mode):
+            # 获取到分配的充电桩
+            pile_id = self.area.charging_area.dispatch(mode)
+            # 获取到最先的用户,并出队列
+            q_info = self.area.waiting_area.call_out(mode)
+            # 把车加入充电桩队列,返回用户是否可以充电
+            user_state = self.area.charging_area.add_car(mode, pile_id, q_info)
+            # 改变用户状态
+            self.info.set_car_state(q_info.car_id, user_state)
+            self.info.set_pile_id(q_info.car_id, pile_id)
+        return {"code": 1, "message": "请求成功"}
+
+    def get_all_queue_state(self):
+        return self.info.get_all_car_info()
+
+    def turn_off_the_pile(self, pile_id):
+        state = PileState(admin_dao.get_pile_state(pile_id))
+        if state == PileState.free and not self.area.charging_area.has_car(pile_id):
+            if admin_dao.changePileState(pile_id, '关闭') == 0:
+                return {"code": 0, "message": "充电桩关闭失败"}
+            self.area.charging_area.turn_off_the_pile(pile_id)
+            return {"code": 1, "message": "请求成功"}
+        else:
+            return {"code": 0, "message": "充电桩不处于空闲状态，或车辆队伍中存在车辆，无法关闭"}
+
+    def turn_on_the_pile(self, pile_id):
+        state = PileState(admin_dao.get_pile_state(pile_id))
+        if state == PileState.off:
+            if admin_dao.changePileState(pile_id, '空闲') == 0:
+                return {"code": 0, "message": "充电桩开启失败"}
+            mode = self.area.charging_area.turn_on_the_pile(pile_id)
+            while self.area.waiting_area.has_car(mode):
+                # 获取到最先的用户,并出队列
+                q_info = self.area.waiting_area.call_out(mode)
+                # 把车加入充电桩队列,返回用户是否可以充电
+                user_state = self.area.charging_area.add_car(mode, pile_id, q_info)
+                # 改变用户状态
+                self.info.set_car_state(q_info.car_id, user_state)
+                self.info.set_pile_id(q_info.car_id, pile_id)
+            return {"code": 1, "message": "请求成功"}
+        else:
+            return {"code": 0, "message": "充电桩不处于关闭状态，无法开启"}
 
 
 dispatching = Dispatch()

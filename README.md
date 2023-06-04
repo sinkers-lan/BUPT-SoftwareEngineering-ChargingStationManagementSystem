@@ -21,6 +21,7 @@
 前端：
 
 - streamlit
+- matplotlib
 
 后端：
 
