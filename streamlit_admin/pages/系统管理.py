@@ -18,6 +18,19 @@ st.title("充电桩系统操作")
 st.markdown("---")
 
 
+def accelerate(rate):
+    data = {
+        "rate": rate
+    }
+    data_ = utils.post(data, path="/system/accelerate")
+    st.write(data_)
+
+
+with st.form(key='my_form'):
+    rate = st.slider("系统时间倍率", 1, 200, 1, 1)
+    submit_button = st.form_submit_button(label='提交', on_click=accelerate, args=(rate,), use_container_width=True)
+
+
 def transform():
     pile_label = []
     amount = st.session_state.get('amount')
@@ -52,11 +65,11 @@ pile_id_list, pile_label = transform()
 print(pile_id_list)
 pile_num = len(pile_id_list)
 for i in range(pile_num):
-    st.markdown(pile_label[i])
-    col1, col2 = st.columns([1, 3])
+    st.markdown(f"##### {pile_label[i]}")
+    col1, col2 = st.columns([1, 1])
     with col1:
-        if st.button(f"损坏", key=f"pile_broken{i}"):
+        if st.button(f"损坏", key=f"pile_broken{i}", use_container_width=True):
             pile_broken(pile_id_list[i])
     with col2:
-        if st.button(f"维修完毕", key=f"pile_repair{i}"):
+        if st.button(f"维修完毕", key=f"pile_repair{i}", use_container_width=True):
             pile_repair(pile_id_list[i])

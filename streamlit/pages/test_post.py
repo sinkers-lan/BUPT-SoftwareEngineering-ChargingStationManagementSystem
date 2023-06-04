@@ -59,6 +59,8 @@ def get_charging_state():
         "car_id": st.session_state['car']
     }
     data_ = utils.post(data, path="/user/getChargingState", token=st.session_state['token'])
+    if data_['code'] == 0:
+        st.error(data_['message'])
     st.session_state['bill_id'] = data_['data']['bill_id']
     st.write(data_)
 

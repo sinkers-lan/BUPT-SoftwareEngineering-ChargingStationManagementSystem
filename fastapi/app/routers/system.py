@@ -1,5 +1,4 @@
 from enum import Enum
-
 from fastapi import APIRouter
 from fastapi import Header
 from typing import Union
@@ -10,6 +9,7 @@ from app.utils import utils
 from app.dao import admin as admin_dao
 from app.utils import config
 from app.service.user import dispatching
+from app.utils.my_time import virtual_time
 
 router = APIRouter(prefix="/system")
 
@@ -45,4 +45,14 @@ async def pile_repair(pram: PileId):
     else:
         dispatching.pile_repair(pram.pile_id)
         return {'code': 1, 'message': '修复成功'}
+
+
+class Rate(BaseModel):
+    rate: float
+
+
+@router.post("/accelerate")
+async def time_accelerate(pram: Rate):
+    virtual_time.accelerate(pram.rate)
+    return {'code': 1, 'message': '加速成功'}
 

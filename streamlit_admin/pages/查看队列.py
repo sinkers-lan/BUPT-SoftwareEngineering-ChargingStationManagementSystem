@@ -102,7 +102,7 @@ else:
                 st.table(data)
                 st.divider()
                 st.subheader("等待区队列")
-                data = df[df['car_state'] == '等待区'].reset_index(drop=True)
+                data = df[df['car_state'] == '处于等候区'].reset_index(drop=True)
                 data = process_df(data)
                 st.table(data)
                 i += 1

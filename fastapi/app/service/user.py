@@ -338,6 +338,14 @@ class ChargingStation:
             # 更改账单
             car_id = q_info_list[0].car_id
             charge_amount = self.__change_bill(car_id)
+            # 改变充电桩的累计数据
+            bill_ls = charging_info.get_bill_id(car_id)
+            data = bill.get_bill(bill_ls)
+            admin_dao.updatePileReport(pile_id=charging_info.get_pile_id(car_id),
+                                       chargeTime=data["charge_duration"],
+                                       capacity=data['charge_amount'],
+                                       chargeFee=data['total_charge_fee'],
+                                       serviceFee=data['total_service_fee'], )
             # 更改正在充电的q_info
             request_amount = charging_info.get_amount(car_id)
             charging_info.set_amount(car_id, request_amount - charge_amount)
@@ -776,6 +784,14 @@ class Dispatch:
         self.area.charging_area.end_charging(car_id)
         # 叫号
         self.__call_out(pile_id, mode)
+        # 改变充电桩的累计数据
+        bill_ls = self.info.get_bill_id(car_id)
+        data = bill.get_bill(bill_ls)
+        admin_dao.updatePileReport(pile_id=self.info.get_pile_id(car_id),
+                                   chargeTime=data["charge_duration"],
+                                   capacity=data['charge_amount'],
+                                   chargeFee=data['total_charge_fee'],
+                                   serviceFee=data['total_service_fee'], )
 
     def user_terminate(self, car_id):  # 和取消充电合并
         # 用户在不同区做不同处理
@@ -785,6 +801,14 @@ class Dispatch:
         elif state == UserState.charging:
             # 结束充电
             self.area.charging_area.end_charging(car_id)  # 线程是安全的，因为如果是定时器线程结束充电，会先改变用户状态
+            # 改变充电桩的累计数据
+            bill_ls = self.info.get_bill_id(car_id)
+            data = bill.get_bill(bill_ls)
+            admin_dao.updatePileReport(pile_id=self.info.get_pile_id(car_id),
+                                       chargeTime=data["charge_duration"],
+                                       capacity=data['charge_amount'],
+                                       chargeFee=data['total_charge_fee'],
+                                       serviceFee=data['total_service_fee'], )
             # 改变用户状态
             self.info.set_car_state(car_id, UserState.end)
             # 叫号
@@ -862,8 +886,8 @@ class Dispatch:
 
     def get_the_bill(self, car_id):
         state = self.info.get_car_state(car_id)
-        if state != UserState.end:
-            return {"code": 0, "message": "用户不处于结束充电状态"}
+        if state != UserState.end and state != UserState.charging:
+            return {"code": 0, "message": "用户不处于结束充电状态或充电状态"}
         bill_ls = self.info.get_bill_id(car_id)
         data = bill.get_bill(bill_ls)
         return {"code": 1, "message": "查询成功", "data": data}
@@ -893,6 +917,7 @@ class Dispatch:
                 return {"code": 0, "message": "已经有充电桩损坏，只考虑单一充电桩损坏的情况"}
         # 通知充电区更改充电桩状态，结束正在充电的车并生成账单，得到充电队列
         q_info_list = self.area.charging_area.pile_damage(pile_id)
+        # 更改充电桩状态
         admin_dao.changePileState(pile_id, PileState.damage.value)
         # 如果同种模式的充电桩还有空位
         mode = Mode.fast if pile_id % 10 == 0 else Mode.slow

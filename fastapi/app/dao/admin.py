@@ -238,13 +238,8 @@ def getPileReport(pile_id, start_date, end_date, cursor):
 # TAG:充电后调用一次
 # 充电一次后，更新充电桩在pile_report的数据
 # 成功返回1
-def updatePileReport(pile_id, chargeTime, capacity, chargeFee, serviceFee, cursor, conn):
+def updatePileReport(pile_id: int, chargeTime: float, capacity: float, chargeFee: float, serviceFee: float):
     # TAG获取年月日的字符串
-    # now=virtual_time.get_current_date()
-    # date='2023-06-02'
-    # date_format = "%Y-%m-%d"
-    # now=datetime.strptime(date,date_format).date()
-    # now = date.today()
     now = date.fromtimestamp(virtual_time.get_current_time())
     result = cursor.execute("select * from pile_report where pile_id=={} and date=='{}'".format(pile_id, now))
     result = result.fetchall()
@@ -266,7 +261,7 @@ def updatePileReport(pile_id, chargeTime, capacity, chargeFee, serviceFee, curso
     else:
         init_pile_report(pile_id, cursor, conn)
         print("WARING:Don't exist pile_id {},date {},so init pile".format(pile_id, now))
-        updatePileReport(pile_id, chargeTime, capacity, chargeFee, serviceFee, cursor, conn)
+        updatePileReport(pile_id, chargeTime, capacity, chargeFee, serviceFee)
 
 
 # init_pile_state(10, cursor, conn)

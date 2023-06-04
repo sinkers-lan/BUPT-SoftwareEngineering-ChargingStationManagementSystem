@@ -74,6 +74,8 @@ def get_bill_from_id(bill_id: int):
 
 
 def get_bill(bill_ls):
+    """bill_id,car_id,bill_date,pile_id,charge_amount,charge_duration, \
+    start_time,end_time,total_charge_fee,total_service_fee,total_fee,pay_state"""
     cursor = my_connect.c.execute(f"select bill_id,car_id,bill_date,pile_id,charge_amount,charge_duration, \
     start_time,end_time,total_charge_fee,total_service_fee,total_fee,pay_state from bill where bill_ls='{bill_ls}'")
     if cursor.rowcount == 0:

@@ -777,6 +777,9 @@ def pay():
         "car_id": st.session_state['car']
     }
     _data = utils.post(data, path="/user/getChargingState", token=st.session_state['token'])
+    if _data['code'] == 0:
+        st.error(_data['message'])
+        return
     st.session_state['bill_id'] = _data['data']['bill_id']
     bill_details = _data['data']
     col1, col2 = st.columns([1, 3])

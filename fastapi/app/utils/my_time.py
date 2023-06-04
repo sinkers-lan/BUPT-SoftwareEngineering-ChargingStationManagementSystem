@@ -48,10 +48,10 @@ class VirtualTime:
         formatted_time = dt.strftime("%Y-%m-%d")
         return formatted_time
 
-    def accelerate(self):
+    def accelerate(self, rate=100):
         if not self.is_start:
             raise Exception('Virtual time has not yet started')
-        self.time_multiplier = 100
+        self.time_multiplier = rate
 
     def moderate(self):
         if not self.is_start:
