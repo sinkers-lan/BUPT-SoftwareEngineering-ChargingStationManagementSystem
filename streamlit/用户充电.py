@@ -107,6 +107,7 @@ if st.session_state['stage'] == Stage.PAY.value:
     st.sidebar.success("开始充电")
     st.sidebar.warning("结束充电并缴费")
 
+
 # st.write(st.session_state['stage'])
 
 
@@ -262,7 +263,8 @@ def submit_charging_request():
     st.write("")
     st.session_state['degree'] = st.slider('请求充电量 (度)', 0.0, st.session_state['capacity'], 0.0, 0.1)
     st.write("")
-    st.session_state['mode'] = st.radio("充电模式", ('快充', '慢充'), help="快充 (30 度/小时), 慢充 (7 度/小时)", horizontal=True)
+    st.session_state['mode'] = st.radio("充电模式", ('快充', '慢充'), help="快充 (30 度/小时), 慢充 (7 度/小时)",
+                                        horizontal=True)
     st.write("")
     st.info(f"请确认您要提交的充电请求：{st.session_state['mode']} {st.session_state['degree']} (度)")
 
@@ -309,8 +311,9 @@ def show_hao():
         st.write("排队号:", st.session_state['hao'], "，充电模式:", st.session_state['mode'],
                  "，请求充电量:", st.session_state['degree'], "度", "，充电桩号:", data_['data']['pile_id'])
     else:
-        st.write("您的排队号码是:", st.session_state['hao'], "，您的充电模式:", st.session_state['mode'], "，您的请求充电量：",
-             st.session_state['degree'], "度")
+        st.write("您的排队号码是:", st.session_state['hao'], "，您的充电模式:", st.session_state['mode'],
+                 "，您的请求充电量：",
+                 st.session_state['degree'], "度")
 
 
 def backward(default_stage):
@@ -327,6 +330,35 @@ def backward(default_stage):
         else:
             st.session_state['stage'] = st.session_state['backward']
             st.experimental_rerun()
+
+
+def get_front_num(now_state: str):
+    data = {
+        "car_id": st.session_state['car']
+    }
+    data_ = utils.post(data, path="/user/queryCarState", token=st.session_state['token'])
+    if data_['code'] == 0:
+        st.error(data_['message'])
+        return 0
+    if data_['data']['car_state'] == '处于充电区':
+        st.session_state['stage'] = Stage.WAIT_FOR_CHARGE.value
+    elif data_['data']['car_state'] == '允许充电':
+        st.session_state['stage'] = Stage.ALLOW_CHARGE.value
+    elif data_['data']['car_state'] == '处于等候区':
+        st.session_state['stage'] = Stage.WAIT.value
+    elif data_['data']['car_state'] == '结束充电':
+        st.session_state['stage'] = Stage.PAY.value
+    elif data_['data']['car_state'] == "空闲":
+        st.session_state['stage'] = Stage.SUBMIT.value
+    elif data_['data']['car_state'] == "正在充电":
+        st.session_state['stage'] = Stage.CHARGE.value
+    else:
+        st.error("未知状态", data_['data']['car_state'])
+    if now_state != st.session_state['stage']:
+        st.experimental_rerun()
+    car_position = data_['data']['car_position']
+    # 前车等待数量
+    return car_position - 1
 
 
 def wait():
@@ -359,34 +391,11 @@ def wait():
     st.write("")
     st.markdown("##### 等待进度")
 
-    def get_front_num():
-        data = {
-            "car_id": st.session_state['car']
-        }
-        data_ = utils.post(data, path="/user/queryCarState", token=st.session_state['token'])
-        if data_['code'] == 0:
-            st.error(data_['message'])
-            return 0
-        if data_['data']['car_state'] == '处于充电区':
-            st.session_state['stage'] = Stage.WAIT_FOR_CHARGE.value
-            st.experimental_rerun()
-        elif data_['data']['car_state'] == '允许充电':
-            st.session_state['stage'] = Stage.ALLOW_CHARGE.value
-            st.experimental_rerun()
-        elif data_['data']['car_state'] == '处于等候区':
-            pass
-        else:
-            st.error("未知状态：" + data_['data']['car_state'])
-            return 0
-        car_position = data_['data']['car_position']
-        # 前车等待数量
-        return car_position - 1
-
-    st.session_state['initial_queue_len'] = get_front_num()
+    st.session_state['initial_queue_len'] = get_front_num(st.session_state['stage'])
 
     my_bar = st.progress(0)
     while True:
-        front_num = get_front_num()
+        front_num = get_front_num(st.session_state['stage'])
         if front_num == 0:
             my_bar.progress(0.99, text=f"前车等待数量: 0")
         else:
@@ -545,33 +554,12 @@ def wait_for_charge():
 
     st.button("取消充电", on_click=cancel_on_click, use_container_width=True)
 
-    def get_front_num():
-        global flag
-        data = {
-            "car_id": st.session_state['car']
-        }
-        data_ = utils.post(data, path="/user/queryCarState", token=st.session_state['token'])
-        if data_['code'] == 0:
-            st.error(data_['message'])
-            return 0
-        if data_['data']['car_state'] == '处于充电区':
-            pass
-        elif data_['data']['car_state'] == '允许充电':
-            st.session_state['stage'] = Stage.ALLOW_CHARGE.value
-            st.experimental_rerun()
-        else:
-            st.error("未知状态：", data_['data']['car_state'])
-            return 0
-        car_position = data_['data']['car_position']
-        # 前车等待数量
-        return car_position - 1
-
-    st.session_state['initial_queue_len'] = get_front_num()
+    st.session_state['initial_queue_len'] = get_front_num(st.session_state['stage'])()
 
     my_bar = st.progress(0)
     flag = True
     while flag:
-        front_num = get_front_num()
+        front_num = get_front_num(st.session_state['stage'])()
         if front_num == 0:
             my_bar.progress(1.0, text=f"前车等待数量: 0")
         else:
@@ -660,6 +648,10 @@ def allow_charge():
     with col2:
         st.button("取消充电", on_click=cancel_on_click, use_container_width=True)
 
+    while True:
+        get_front_num(st.session_state['stage'])
+        time.sleep(2)
+
 
 if st.session_state['stage'] == Stage.ALLOW_CHARGE.value:
     allow_charge()
@@ -718,21 +710,7 @@ def begin_charge():
     st.write("预计充电结束时间为：", st.session_state['end_time'])
     with st.spinner('正在充电中...'):
         while True:
-            data = {
-                "car_id": st.session_state['car']
-            }
-            data_ = utils.post(data, path="/user/queryCarState", token=st.session_state['token'])
-            if data_['code'] == 0:
-                st.error(data_['message'])
-                return 0
-            else:
-                if data_['data']['car_state'] == '结束充电':
-                    st.session_state['stage'] = Stage.PAY.value
-                    st.experimental_rerun()
-                elif data_['data']['car_state'] == '正在充电':
-                    pass
-                else:
-                    st.error("充电状态异常" + data_['data']['car_state'])
+            get_front_num(st.session_state['stage'])
             time.sleep(1)
 
 

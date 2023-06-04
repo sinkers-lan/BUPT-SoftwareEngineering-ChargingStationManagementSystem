@@ -71,6 +71,8 @@ async def log_out(user: LogoutUser, authorization: Annotated[Union[str, None], H
     flag, info = utils.decode_token(authorization)
     if not flag:
         return {"code": 0, "message": info}
+    else:
+        return {"code": 1, "message": "登出成功"}
     pass
 
 

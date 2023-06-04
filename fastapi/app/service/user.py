@@ -226,6 +226,7 @@ class ChargingStation:
         self.end_time: float = -1
         self.state: PileState = state
         self.timer: Optional[VirtualTimer] = None
+        admin_dao.init_pile_state(pile_id)
 
     def calculate_bill(self, start_time: float, charge_duration: float):
         return utils.calculate_bill(start_time, charge_duration, self.power)
@@ -757,6 +758,8 @@ class Dispatch:
             pile_id = self.info.get_pile_id(car_id)
             mode = self.info.get_mode(car_id)
             self.__call_out(pile_id, mode)
+            # 更改充电桩状态
+            admin_dao.changePileState(pile_id, PileState.free.value)
             return {"code": 1, "message": "成功结束充电"}
         elif state == UserState.waiting_for_charging or state == UserState.allow:
             # 取消充电
@@ -820,6 +823,7 @@ class Dispatch:
         if state != UserState.allow:
             return {"code": 0, "message": "用于状态不处于允许充电状态"}
         self.area.charging_area.begin_charging(car_id)
+        admin_dao.changePileState(self.info.get_pile_id(car_id), PileState.using.value)
         self.info.set_car_state(car_id, UserState.charging)
         return {"code": 1, "message": "请求成功"}
 

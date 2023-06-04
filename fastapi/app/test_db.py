@@ -32,11 +32,11 @@ def del_bill(bill_id):
 def init_pile():
     cursor = my_connect.c
     conn = my_connect.conn
-    admin_dao.init_pile_state(10, cursor, conn)
-    admin_dao.init_pile_state(20, cursor, conn)
-    admin_dao.init_pile_state(11, cursor, conn)
-    admin_dao.init_pile_state(21, cursor, conn)
-    admin_dao.init_pile_state(31, cursor, conn)
+    admin_dao.init_pile_state(10)
+    # admin_dao.init_pile_state(20)
+    # admin_dao.init_pile_state(11)
+    # admin_dao.init_pile_state(21)
+    # admin_dao.init_pile_state(31)
 
 if __name__ == "__main__":
     init_pile()

@@ -10,9 +10,9 @@ from app.dao.connection import my_connect
 如果connect()内的数据库名称存在，则与此数据库建立连接；
 如果connect()内的数据库名称不存在，则新建数据库，再建立连接
 """
-conn = sqlite3.connect(database='SoftwareEngineering.db')
+conn = my_connect.conn
 # 2.创建cursor对象
-cursor = conn.cursor()
+cursor = my_connect.c
 
 # 创建pile_state 表格
 sql = """CREATE TABLE pile_state(
@@ -46,7 +46,7 @@ sql = """CREATE TABLE pile_report(
 
 # TAG初始化
 # 初始化pile_state表格里的充电桩
-def init_pile_state(pile_id, cursor, conn):
+def init_pile_state(pile_id):
     result = cursor.execute(
         """
         select * from pile_state where pile_id=={}
@@ -234,11 +234,11 @@ def updatePileReport(pile_id, chargeTime, capacity, chargeFee, serviceFee, curso
         updatePileReport(pile_id, chargeTime, capacity, chargeFee, serviceFee, cursor, conn)
 
 
-init_pile_state(10, cursor, conn)
-init_pile_state(20, cursor, conn)
-init_pile_state(31, cursor, conn)
-init_pile_state(41, cursor, conn)
-init_pile_state(51, cursor, conn)
+# init_pile_state(10)
+# init_pile_state(20)
+# init_pile_state(31)
+# init_pile_state(41)
+# init_pile_state(51)
 '''
 # getPileState(20,cursor,conn)
 updatePileReport(20,1.2,3.5,1.4,0.7,cursor,conn)
