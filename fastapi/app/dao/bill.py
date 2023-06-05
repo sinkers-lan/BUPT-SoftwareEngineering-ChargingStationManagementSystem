@@ -1,3 +1,5 @@
+from typing import Optional
+
 from app.utils import utils
 from app.dao.connection import my_connect
 from app.utils.my_time import virtual_time
@@ -97,9 +99,9 @@ def get_bill(bill_ls, conn=my_connect.conn, c=my_connect.c):
         }
 
 
-def get_all_bill(car_id: str, date: str = None):
+def get_all_bill(car_id: str, date: Optional[str] = None):
     """如果没有传入日期，就返回所有的账单。如果bill_date==date，就返回当天的账单"""
-    if date is None:
+    if date is None or date is "":
         cursor = my_connect.c.execute(f"select bill_ls,car_id,bill_date,pile_id, \
         start_time,end_time,total_fee,pay_state from bill where car_id='{car_id}'")
     else:

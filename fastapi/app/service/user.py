@@ -20,7 +20,7 @@ class UserState(Enum):
     waiting_for_charging = '处于充电区'
     allow = '允许充电'
     charging = '正在充电'
-    end = '结束充电'
+    end = '充电结束'
 
 
 class PileState(Enum):
@@ -293,6 +293,7 @@ class ChargingStation:
             self.timer.terminate()
             # 改变充电桩状态
             self.state = PileState.free
+            admin_dao.changePileState(self.pile_id, self.state.value)
             # ② 由用户终止充电。更改账单
             if threading.current_thread().getName() != "timer":
                 self.__change_bill(car_id)
@@ -993,6 +994,13 @@ class Dispatch:
             return {"code": 1, "message": "请求成功"}
         else:
             return {"code": 0, "message": "充电桩不处于关闭状态，无法开启"}
+
+    def change_capacity(self, car_id, capacity):
+        state = self.info.get_car_state(car_id)
+        if state != UserState.free:
+            return {"code": 0, "message": "车辆不处于空闲状态，无法修改电车总电量"}
+        return user_dao.change_capacity(car_id, capacity)
+
 
 
 dispatching = Dispatch()

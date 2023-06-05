@@ -1,13 +1,9 @@
 import streamlit as st
 from typing import List
-import asyncio
-import requests
-import json
-import datetime
-import threading
 from utils import utils
+import time
+import datetime
 
-HOST='http://10.28.136.251:8002'
 st.set_page_config(
     page_title="显示充电桩状态",
     page_icon="👋",
@@ -25,6 +21,7 @@ if 'fast_pile_id' not in st.session_state:
 if 'slow_pile_id' not in st.session_state:
     st.session_state['slow_pile_id'] = []
 
+
 def transform():
     pile_label = []
     amount = st.session_state.get('amount')
@@ -39,8 +36,9 @@ def transform():
     return pile_list, pile_label
 
 
-def send_post_request(pile_id, data_list):
+def send_post_request(pile_id: int, data_list):
     my_json = {'pile_id': pile_id}
+    print(pile_id)
     # print(f"==before {pile_id}=="+str(datetime.datetime.now().strftime("%H:%M:%S.%f")))
     data = utils.post(my_json, "/admin/queryPileState", st.session_state['token'])
     # print(f"==after {pile_id}=="+str(datetime.datetime.now().strftime("%H:%M:%S.%f")))
@@ -52,8 +50,10 @@ def send_post_request(pile_id, data_list):
         data_list = None
         return data_list
 
-def query_pile_state(pile_id):
+
+def query_pile_state(pile_id: int):
     my_json = {'pile_id': pile_id}
+    print(pile_id)
     data = utils.post(my_json, "/admin/queryPileState", st.session_state['token'])
     if data['code'] == 1:
         target = data['data']
@@ -61,6 +61,7 @@ def query_pile_state(pile_id):
         return target
     else:
         st.error(data['message'])
+
 
 def get_data():
     pile_list, pile_label = transform()
@@ -151,6 +152,28 @@ else:
             st.success("成功关闭充电桩")
 
 
+    def pile_crash(pile_id):
+        data = {
+            "pile_id": pile_id
+        }
+        data_ = utils.post(data, path="/admin/powerCrash", token=st.session_state['token'])
+        if data_['code'] == 0:
+            st.error(data_['message'])
+        else:
+            st.success("成功损坏充电桩")
+
+
+    def pile_repair(pile_id):
+        data = {
+            "pile_id": pile_id
+        }
+        data_ = utils.post(data, path="/admin/powerOn", token=st.session_state['token'])
+        if data_['code'] == 0:
+            st.error(data_['message'])
+        else:
+            st.success("成功修复充电桩")
+
+
     for tab, tab_content in zip(tab_list, data_list):
         with tab:
             if tab_content:
@@ -158,10 +181,21 @@ else:
                         tab_content['totalChargeTime'], tab_content['totalCapacity'], tab_content['charge_mode'])
                 if tab_content['workingState'] == '关闭':
                     st.button("开启", key=f"poweron_{tab_content['pile_id']}", on_click=powerOn,
-                              args=(tab_content['pile_id'],))
+                              args=(tab_content['pile_id'],), use_container_width=True)
                 elif tab_content['workingState'] == '空闲':
-                    st.button("关闭", key=f"poweroff_{tab_content['pile_id']}", on_click=powerOff,
-                              args=(tab_content['pile_id'],))
+                    col1, col2 = st.columns([1, 1])
+                    with col1:
+                        st.button("关闭", key=f"poweroff_{tab_content['pile_id']}", on_click=powerOff,
+                                  args=(tab_content['pile_id'],), use_container_width=True)
+                    with col2:
+                        st.button("损坏", key=f"crash_{tab_content['pile_id']}", on_click=pile_crash,
+                                  args=(tab_content['pile_id'],), use_container_width=True)
+                elif tab_content['workingState'] == '损坏':
+                    st.button("修复", key=f"repair_{tab_content['pile_id']}", on_click=pile_repair,
+                              args=(tab_content['pile_id'],), use_container_width=True)
+                elif tab_content['workingState'] == '使用中':
+                    st.button("损坏", key=f"crash_{tab_content['pile_id']}", on_click=pile_crash,
+                              args=(tab_content['pile_id'],), use_container_width=True)
             else:
                 st.error("错误")
     st.divider()
@@ -189,3 +223,8 @@ else:
         st.divider()
     else:
         changePrice(low_price, mid_price, high_price)
+    # #强制刷新
+    # print("==before=="+str(datetime.datetime.now().strftime("%H:%M:%S.%f")))
+    time.sleep(5)
+    # print("==after=="+str(datetime.datetime.now().strftime("%H:%M:%S.%f")))
+    st.experimental_rerun()

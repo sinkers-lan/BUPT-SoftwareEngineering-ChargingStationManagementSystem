@@ -88,7 +88,7 @@ def logon(user_name: str, hash_password: str, car_id: str, capacity: float) -> d
             "user_name": user_name,
             "token": None,
             "car_id": car_id,
-            "capacity": capacity
+            "car_capacity": capacity
         }
     }
 
@@ -99,3 +99,9 @@ def get_car_info(car_id: str):
     for row in cursor:
         return row[0], row[1]
     raise Exception("No such car_id")
+
+
+def change_capacity(car_id: int, capacity: float):
+    my_connect.c.execute(f"update user set capacity = {capacity} where car_id = '{car_id}'")
+    my_connect.conn.commit()
+    return {"code": 1, "message": "修改成功", "data": {"car_capacity": capacity}}

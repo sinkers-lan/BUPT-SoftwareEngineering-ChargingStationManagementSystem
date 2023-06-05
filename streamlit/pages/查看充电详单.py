@@ -10,7 +10,8 @@ def get_total_bill(date=None):
     data_ = utils.post(data, path="/user/getTotalBill", token=st.session_state['token'])
     if data_['code'] == 0:
         st.error(data_['message'])
-    return data_.get('data', [])
+    my_list = data_.get('data')
+    return my_list['bill_list']
 
 
 def get_detail_bill(bill_id):
@@ -42,7 +43,7 @@ def get_pay_bill(bill_id):
 st.markdown('### 电车充电账单信息')
 st.markdown('---')
 
-if "stage" not in st.session_state or st.session_state['stage'] == "用户登录":
+if "stage" not in st.session_state or st.session_state['stage'] == "用户登录" or st.session_state['stage'] == "用户注册":
     st.write("请先登录")
     st.stop()
 

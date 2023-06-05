@@ -46,7 +46,7 @@ class LogonUser(BaseModel):
     user_name: str
     password: str
     car_id: str
-    capacity: float
+    car_capacity: float
 
 
 @router.post("/register")
@@ -55,15 +55,14 @@ async def user_register(user: LogonUser):
     print(user.user_name, "register")
     """验证用户名在数据库中是否有重复，如果重复则返回失败信息"""
     psw = utils.hash_password(user.password)
-    info = user_dao.logon(user.user_name, psw, user.car_id, user.capacity)
+    info = user_dao.logon(user.user_name, psw, user.car_id, user.car_capacity)
     if info['code'] == 1:
         info['data']['token'] = utils.generate_token(info['data']['user_id'])
     return info
 
 
 class LogoutUser(BaseModel):
-    user_name: str
-    password: str
+    user_id: str
 
 
 @router.post("/logout")
@@ -167,19 +166,13 @@ async def change_capacity(parm: ChangeCapacity, authorization: Annotated[Union[s
     flag, info = utils.decode_token(authorization)
     if not flag:
         return {"code": 0, "message": info}
-    # dispatching.change_degree(parm.car_id, parm.car_capacity)
-    return {
-        "code": 1,
-        "message": "修改成功",
-        "data": {
-            "car_capacity": 34.99
-        }
-    }
+    return dispatching.change_capacity(parm.car_id, parm.car_capacity)
+
 
 
 class GetTotalBill(BaseModel):
     car_id: str
-    bill_date: Optional[datetime.date] = None
+    bill_date: Optional[str] = None
 
 
 @router.post("/getTotalBill")
@@ -190,7 +183,9 @@ async def get_total_bill(pram: GetTotalBill, authorization: Annotated[Union[str,
     return {
         "code": 1,
         "message": "查询成功",
-        "data": bill_dao.get_all_bill(pram.car_id, pram.bill_date)
+        "data": {
+            'bill_list': bill_dao.get_all_bill(pram.car_id, pram.bill_date)
+        }
     }
 
 

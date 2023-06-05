@@ -4,7 +4,7 @@ import json
 import pandas as pd
 import numpy as np
 from utils import utils
-
+import time
 st.set_page_config(
     page_title="查看队列",
     page_icon="👋",
@@ -91,7 +91,7 @@ else:
     pile_list, tabs = transform()
     tab_list = st.tabs(tabs)
     state_list = get_data()
-    print(state_list)
+    # print(state_list)
     if state_list:
         df = pd.DataFrame(state_list)
         i = 0
@@ -108,3 +108,7 @@ else:
                 i += 1
     else:
         st.info("当前充电桩没有车辆")
+    #强制刷新
+    time.sleep(3)
+    st.experimental_rerun()
+

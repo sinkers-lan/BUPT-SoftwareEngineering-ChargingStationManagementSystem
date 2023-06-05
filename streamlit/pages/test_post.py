@@ -92,6 +92,14 @@ def get_detail_bill():
     st.write(data_)
 
 
+def log_out():
+    data = {
+        "user_id": "18511890126"
+    }
+    data_ = utils.post(data, path="/user/logout", token=st.session_state['token'])
+    st.write(data_)
+
+
 if "car" not in st.session_state:
     st.write("请先登录")
 else:
@@ -104,3 +112,5 @@ else:
     st.button("getChargingState", on_click=get_charging_state)
     st.button("getPayBill", on_click=get_pay_bill)
     st.button("getTotalBill", on_click=get_total_bill)
+    # st.button("getDetailBill", on_click=get_detail_bill)
+    st.button("logOut", on_click=log_out)

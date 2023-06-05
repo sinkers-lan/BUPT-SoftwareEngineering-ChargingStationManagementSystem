@@ -88,7 +88,7 @@ def get_pile_state(pile_id):
 
 # 改变充电桩工作状态
 # 成功返回1，失败返回0
-def changePileState(pile_id, workingState):
+def changePileState(pile_id, workingState: str):
     if pile_id in total_pile_id:
         pileState[pile_id] = workingState
         return 1

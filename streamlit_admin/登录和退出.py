@@ -37,8 +37,8 @@ if st.session_state['stage'] == 'login':
                 data = utils.post({}, "/admin/queryPileAmount", token)
                 if data['code'] == 1:
                     st.session_state['amount'] = data['data']['amount']
-                    st.session_state['fast_pile_id'] = data['data']['fast_pile_id']
-                    st.session_state['slow_pile_id'] = data['data']['slow_pile_id']
+                    st.session_state['fast_pile_id'] = [i['pile_id'] for i in data['data']['fast_pile_id']]
+                    st.session_state['slow_pile_id'] = [i['pile_id'] for i in data['data']['slow_pile_id']]
                 else:
                     st.error(data['message'])
             else:

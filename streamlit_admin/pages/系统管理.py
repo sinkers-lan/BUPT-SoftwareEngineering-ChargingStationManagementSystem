@@ -52,11 +52,11 @@ def transform():
     return pile_list, pile_label
 
 
-def pile_broken(pile_id):
+def pile_crash(pile_id):
     data = {
         "pile_id": pile_id
     }
-    data_ = utils.post(data, path="/system/pileBroken")
+    data_ = utils.post(data, path="/admin/powerCrash")
     st.write(data_)
 
 
@@ -64,7 +64,7 @@ def pile_repair(pile_id):
     data = {
         "pile_id": pile_id
     }
-    data_ = utils.post(data, path="/system/pileRepair")
+    data_ = utils.post(data, path="/admin/powerOn")
     st.write(data_)
 
 
@@ -75,8 +75,8 @@ for i in range(pile_num):
     st.markdown(f"##### {pile_label[i]}")
     col1, col2 = st.columns([1, 1])
     with col1:
-        if st.button(f"损坏", key=f"pile_broken{i}", use_container_width=True):
-            pile_broken(pile_id_list[i])
+        if st.button(f"损坏", key=f"pile_crash{i}", use_container_width=True):
+            pile_crash(pile_id_list[i])
     with col2:
         if st.button(f"维修完毕", key=f"pile_repair{i}", use_container_width=True):
             pile_repair(pile_id_list[i])

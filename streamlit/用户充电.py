@@ -20,7 +20,7 @@ class Stage(Enum):
     ALLOW_CHARGE = "允许充电"
     CANCEL_ALLOW_CHARGE = "取消允许充电"
     CHARGE = "开始充电"
-    CANCEL_CHARGE = "结束充电"
+    CANCEL_CHARGE = "充电结束"
     PAY = "缴费"
 
 
@@ -130,6 +130,7 @@ def show_info():
 
 def login():
     st.markdown("## 智能充电桩充电系统 🎈")
+    st.markdown('---')
     st.markdown("#### 用户登录")
     phone = st.text_input("手机号")
     password = st.text_input("密码", type="password")
@@ -173,6 +174,7 @@ if st.session_state['stage'] == Stage.LOGIN.value:
 
 def register():
     st.markdown("## 智能充电桩充电系统 🎈")
+    st.markdown('---')
     st.markdown("#### 用户注册")
     phone = st.text_input("手机号")
     password = st.text_input("密码", type="password")
@@ -208,7 +210,7 @@ def register():
         if capacity == 0:
             st.error("电车电池容量不能为零")
             return
-        my_json = {"user_name": phone, "password": password, "car_id": car, "capacity": capacity}
+        my_json = {"user_name": phone, "password": password, "car_id": car, "car_capacity": capacity}
         data = utils.post(my_json=my_json, path="/user/register")
         if data['code'] == 1:
             st.session_state['user'] = phone
@@ -217,6 +219,7 @@ def register():
             st.session_state['car'] = car
             st.session_state['stage'] = Stage.SUBMIT.value
         else:
+            st.write(data)
             st.error(data['message'])
         pass
 
@@ -254,13 +257,13 @@ def submit_charging_request():
     elif data_['data']['car_state'] == '正在充电':
         st.session_state['stage'] = Stage.CHARGE.value
         st.experimental_rerun()
-    elif data_['data']['car_state'] == "结束充电":
+    elif data_['data']['car_state'] == "充电结束":
         st.session_state['stage'] = Stage.PAY.value
         st.experimental_rerun()
     elif data_['data']['car_state'] == "空闲":
         pass
     else:
-        st.error("未知状态：" + data_['data']['car_state'])
+        st.error(f"未知状态：{data_['data']['car_state']}")
         return 0
     st.write("")
     st.session_state['degree'] = st.slider('请求充电量 (度)', 0.0, st.session_state['capacity'], 0.0, 0.1)
@@ -349,7 +352,7 @@ def get_front_num(now_state: str):
         st.session_state['stage'] = Stage.ALLOW_CHARGE.value
     elif data_['data']['car_state'] == '处于等候区':
         st.session_state['stage'] = Stage.WAIT.value
-    elif data_['data']['car_state'] == '结束充电':
+    elif data_['data']['car_state'] == '充电结束':
         st.session_state['stage'] = Stage.PAY.value
     elif data_['data']['car_state'] == "空闲":
         st.session_state['stage'] = Stage.SUBMIT.value
@@ -718,7 +721,7 @@ def begin_charge():
         st.session_state['stage'] = Stage.CANCEL_CHARGE.value
         st.session_state['loop'] = True
 
-    st.button("结束充电", on_click=cancel_on_click, use_container_width=True)
+    st.button("充电结束", on_click=cancel_on_click, use_container_width=True)
 
     # st.markdown("#### 充电进度")
     st.write("预计充电时间为：", st.session_state['during'])

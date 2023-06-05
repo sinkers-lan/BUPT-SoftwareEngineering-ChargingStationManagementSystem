@@ -1,11 +1,11 @@
 import streamlit as st
 from typing import List
-import json
 import datetime
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
+import time
+from streamlit_autorefresh import st_autorefresh
 from utils import utils
 from utils.utils import post
 import threading
@@ -62,10 +62,10 @@ def query_pile_report(pile_id, start_date, end_date):
 
 # 展示费用
 def display_fee(data_list, labels):
-    # print("======")
-    print(data_list)
+    # # print("======")
+    # print(data_list)
     df = pd.DataFrame(data_list)
-    print(df)
+    # print(df)
     sum_charge = df['total_charge_fee'].sum()
     sum_service = df['total_service_fee'].sum()
     sum_fee = df['total_fee'].sum()
@@ -84,8 +84,11 @@ def display_fee(data_list, labels):
     # 存在一个全0，则不按饼状图显示
     if not result:
         st.subheader("累计充电费用")
-        plt.pie(data, labels=labels, colors=colors,
-                autopct=lambda x: '{:.0f}'.format(x * data.sum() / 100),
+        data = data.tolist()
+        dic = dict(zip(labels, data))
+        dic = {key: value for key, value in dic.items() if value != 0}
+        plt.pie(dic.values(), labels=dic.keys(), colors=colors,
+                autopct=lambda x: '{:.2f}'.format(x * sum_charge / 100),
                 shadow=True, startangle=90)  # startangle=90则从y轴正方向画起
         plt.axis('equal')  # 该行代码使饼图长宽相等
         plt.legend(loc="upper left", fontsize=10, bbox_to_anchor=(1.1, 1.05), borderaxespad=0.3)  # 添加图例
@@ -94,8 +97,10 @@ def display_fee(data_list, labels):
         st.subheader("累计服务费用")
         fig = plt.figure()
         data = df['total_service_fee']
-        plt.pie(data, labels=labels, colors=colors,
-                autopct=lambda x: '{:.0f}'.format(x * data.sum() / 100),
+        dic = dict(zip(labels, data))
+        dic = {key: value for key, value in dic.items() if value != 0}
+        plt.pie(dic.values(), labels=dic.keys(), colors=colors,
+                autopct=lambda x: '{:.2f}'.format(x * sum_service / 100),
                 shadow=True, startangle=90)  # startangle=90则从y轴正方向画起
         plt.axis('equal')  # 该行代码使饼图长宽相等
         plt.legend(loc="upper left", fontsize=10, bbox_to_anchor=(1.1, 1.05), borderaxespad=0.3)  # 添加图例
@@ -104,8 +109,10 @@ def display_fee(data_list, labels):
         st.subheader("累计总费用")
         fig = plt.figure()
         data = df['total_fee']
-        plt.pie(data, labels=labels, colors=colors,
-                autopct=lambda x: '{:.0f}'.format(x * data.sum() / 100),
+        dic = dict(zip(labels, data))
+        dic = {key: value for key, value in dic.items() if value != 0}
+        plt.pie(dic.values(), labels=dic.keys(), colors=colors,
+                autopct=lambda x: '{:.2f}'.format(x * sum_service / 100),
                 shadow=True, startangle=90)  # startangle=90则从y轴正方向画起
         plt.axis('equal')  # 该行代码使饼图长宽相等
         plt.legend(loc="upper left", fontsize=10, bbox_to_anchor=(1.1, 1.05), borderaxespad=0.3)  # 添加图例
@@ -145,9 +152,10 @@ def send_post_request(pile_id, start_date, end_date, data_list, header):
         target['pile_id'] = pile_id
         data_list.append(target)
     else:
-        print("error")
+        # print("error")
         data_list = None
         return data_list
+
 
 def get_data(start_date, end_date):
     start_date = start_date.strftime("%Y-%m-%d")
@@ -224,3 +232,8 @@ else:
     with tab2:
         st.subheader("报表时间" + str(start_date) + "~" + str(end_date))
         display_charge(data_list, labels)
+    # # 强制刷新
+    # # print("==before=="+str(datetime.datetime.now().strftime("%H:%M:%S.%f")))
+    time.sleep(3)
+    # # print("==after=="+str(datetime.datetime.now().strftime("%H:%M:%S.%f")))
+    st.experimental_rerun()

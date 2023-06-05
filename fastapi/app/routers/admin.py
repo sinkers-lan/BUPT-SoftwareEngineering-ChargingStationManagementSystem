@@ -1,3 +1,5 @@
+from enum import Enum
+
 from fastapi import APIRouter
 from fastapi import Header
 from typing import Union
@@ -69,6 +71,42 @@ conn = my_connect.conn
 cursor = my_connect.c
 
 
+class PileState(Enum):
+    off = '关闭'
+    free = '空闲'
+    using = "使用中"
+    damage = "损坏"
+
+
+class PileId(BaseModel):
+    pile_id: int
+
+
+@router.post("/powerCrash")
+async def pile_broken(pram: PileId, authorization: Annotated[Union[str, None], Header()] = None):
+    flag, info = utils.decode_token(authorization)
+    if not flag:
+        return {'code': 0, 'message': info}
+    state = PileState(admin_dao.get_pile_state(pram.pile_id))
+    if state == PileState.off:
+        return {'code': 0, 'message': '该充电桩已经关闭，无法损坏'}
+    elif state == PileState.damage:
+        return {'code': 0, 'message': '该充电桩已经损坏'}
+    else:
+        dispatching.pile_damage(pram.pile_id)
+        return {'code': 1, 'message': '损坏成功'}
+
+
+@router.post("/pileRepair")
+async def pile_repair(pram: PileId):
+    state = PileState(admin_dao.get_pile_state(pram.pile_id))
+    if state != PileState.damage:
+        return {'code': 0, 'message': '该充电桩正常，无法修复'}
+    else:
+        dispatching.pile_repair(pram.pile_id)
+        return {'code': 1, 'message': '修复成功'}
+
+
 class Admin(BaseModel):
     password: str
 
@@ -85,6 +123,7 @@ async def login(admin: Admin):
             }
         }
     else:
+        print(admin.password)
         return {
             'code': 0,
             'message': '密码错误'
@@ -106,8 +145,8 @@ async def query_pile_amount(authorization: Annotated[Union[str, None], Header()]
             'message': '成功得到充电桩数量',
             'data': {
                 'amount': amount,
-                'fast_pile_id': fast_pile_id,
-                'slow_pile_id': slow_pile_id
+                'fast_pile_id': [{'pile_id': i} for i in fast_pile_id],
+                'slow_pile_id': [{'pile_id': i} for i in slow_pile_id]
             }
         }
     else:
@@ -156,16 +195,19 @@ async def query_pile_state(pile: Pile, authorization: Annotated[Union[str, None]
 
 
 @router.post("/powerOn")
-async def power_on(pile: Pile, authorization: Annotated[Union[str, None], Header()] = None):
+async def power_on(pram: Pile, authorization: Annotated[Union[str, None], Header()] = None):
     flag, info = utils.decode_token(authorization)
-    if flag:
-        data = dispatching.turn_on_the_pile(pile.pile_id)
+    if not flag:
+        return {'code': 0, 'message': info}
+    state = PileState(admin_dao.get_pile_state(pram.pile_id))
+    if state == PileState.damage:
+        dispatching.pile_repair(pram.pile_id)
+        return {'code': 1, 'message': '修复成功'}
+    elif state == PileState.off:
+        data = dispatching.turn_on_the_pile(pram.pile_id)
         return data
     else:
-        return {
-            'code': 0,
-            'message': '未能正常开启充电桩'
-        }
+        return {'code': 0, 'message': '该充电桩已经开启'}
 
 
 @router.post("/powerOff")

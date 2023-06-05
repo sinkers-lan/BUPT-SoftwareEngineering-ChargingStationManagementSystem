@@ -4,8 +4,8 @@ import streamlit as st
 import requests
 import json
 
-HOST = "http://10.28.136.251:8002"
-
+# HOST = "http://10.28.136.251:8002"
+HOST = "http://47.93.6.45"
 
 def post(my_json: dict, path: str, token=None) -> dict:
     # print(token)
