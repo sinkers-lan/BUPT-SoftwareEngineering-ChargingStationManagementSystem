@@ -35,8 +35,16 @@
 
 **前端启动命令：**
 
+客户界面启动命令，使用默认端口8501
+
 ```
 streamlit run 用户充电.py
+```
+
+管理员界面启动命令，指定端口8502
+
+```
+streamlit run 登录和登出.py --server.port 8502
 ```
 
 **后端启动程序：**
@@ -52,6 +60,6 @@ python app.py
 或 使用命令行启动命令：
 
 ```
-uvicorn --reload main:app --host 0.0.0.0 --port 8002
+uvicorn main:app --host 0.0.0.0 --port 8002 --reload 
 ```
 
