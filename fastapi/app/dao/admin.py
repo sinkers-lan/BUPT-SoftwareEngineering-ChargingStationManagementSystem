@@ -12,8 +12,8 @@ import app.utils.config as config
 如果connect()内的数据库名称不存在，则新建数据库，再建立连接
 """
 
-conn = my_connect.conn
-cursor = my_connect.c
+my_conn = my_connect.conn
+my_cursor = my_connect.c
 # 快充充电桩数量
 fast_pile_id = [i * 10 + 0 for i in range(1, config.FastChargingPileNum + 1)]
 # 慢充充电桩数量
@@ -32,7 +32,7 @@ sql = """CREATE TABLE pile_state(
             totalCapacity DOUBLE NOT NULL
             );"""
 # 执行SQL指令
-# cursor.execute(sql)
+# my_cursor.execute(sql)
 # print("pile_state表格创建成功")
 
 # 创建pile_report表格
@@ -48,38 +48,11 @@ sql = """CREATE TABLE pile_report(
             );"""
 
 
-# 执行SQL指令
-# cursor.execute(sql)
-# print("pile_report表格创建成功")
-
-
-# TAG初始化
-# 初始化pile_state表格里的充电桩
-# def init_pile_state(pile_id, cursor, conn):
-#     result = cursor.execute(
-#         """
-#         select * from pile_state where pile_id=={}
-#         """.format(pile_id)
-#     )
-#     result = result.fetchall()
-#     # print(result)
-#     # 没有在表中查找到相应的pile_id
-#     if len(result) == 0:
-#         cursor.execute("""
-#         INSERT INTO pile_state(pile_id,workingState,totalChargeNum,totalChargeTime,totalCapacity)
-#         VALUES({}, '空闲',0,0.0,0.0)
-#         """.format(pile_id))
-#         conn.commit()
-#         print("pile_id:{}初始化成功".format(pile_id))
-
-
 # 查看充电桩状态
 def getPileState(pile_id):
-    # flag = updatePileState(pile_id, cursor, conn)
-    # result = cursor.execute('select * from pile_state where pile_id=={}'.format(pile_id))
     if pile_id in total_pile_id:
         now = date.fromtimestamp(virtual_time.get_current_time())
-        result = cursor.execute(
+        result = my_cursor.execute(
             "select sum(total_charge_num),sum(total_charge_time),sum(total_capacity) from pile_report where pile_id=={} and date<='{}'".format(
                 pile_id, now))
         result = result.fetchall()
@@ -111,25 +84,6 @@ def get_pile_state(pile_id):
     else:
         print(f"ERROR:pile {pile_id} doesn't exist")
         return None
-    # cursor = my_connect.c.execute("select workingState from pile_state where pile_id=={}".format(pile_id))
-    # for row in cursor:
-    #     return row[0]
-    # raise Exception("pile_id not exist")
-
-
-# TAG
-# 查看充电桩工作状态
-# def getPileWorkingState(pile_id, cursor):
-#     if pile_id in total_pile_id:
-#         return pileState[pile_id]
-#     else:
-#         print(f"ERROR:pile {pile_id} doesn't exist,can't get its working state.")
-# result = cursor.execute("select * from pile_state where pile_id={}".format(pile_id))
-# result = result.fetchall
-# if len(result):
-#     return result[0][1]
-# else:
-#     print("ERROR:can't get pile_id:{}'s workingState".format(pile_id))
 
 
 # 改变充电桩工作状态
@@ -141,49 +95,10 @@ def changePileState(pile_id, workingState):
     else:
         print(f"ERROR:pile {pile_id} doesn't exist")
         return 0
-    # result = cursor.execute('select * from pile_state where pile_id=={}'.format(pile_id))
-    # result = result.fetchall()
-    # if len(result):
-    #     cursor.execute("update pile_state set workingState = '{}' where pile_id={}".format(workingState, pile_id))
-    #     conn.commit()
-    #     return 1
-    # else:
-    #     print("ERROR:can't change pile_id {} workingState".format(pile_id))
-    #     return 0
-
-
-# 在查询pilestate的数据时将其更新
-# 通过求一次pile_report的sum，不用每次变动都更新pilestate数据库数据
-# def updatePileState(pile_id, cursor, conn):
-#     # TAG获取年月日的字符串
-#     # now=virtual_time.get_current_date()
-#     # date_format = "%Y-%m-%d"
-#     # now = datetime.strptime(date, date_format).date()
-#     now = date.fromtimestamp(virtual_time.get_current_time())
-#     # now = datetime.today()
-#     result = cursor.execute(
-#         "select sum(total_charge_num),sum(total_charge_time),sum(total_capacity) from pile_report where pile_id=={} and date<='{}'".format(
-#             pile_id, now))
-#     result = result.fetchall()
-#     if result[0][0]:
-#         cursor.execute('update pile_state set totalChargeNum={} where pile_id={}'.format(str(result[0][0]), pile_id))
-#         cursor.execute('update pile_state set totalChargeTime={} where pile_id={}'.format(str(result[0][1]), pile_id))
-#         cursor.execute('update pile_state set totalCapacity={} where pile_id={}'.format(str(result[0][2]), pile_id))
-#         conn.commit()
-#         return 1
-#     else:
-#         print("WARNING:don't exist pile_id={} ,update error".format(pile_id))
-#         return 0
 
 
 # 初始化pile_report表格里的充电桩
 def init_pile_report(pile_id, cursor, conn):
-    # TAG获取年月日的字符串
-    # date=virtual_time.get_current_date()
-    # date='2023-06-01'
-    # date_format = "%Y-%m-%d"
-    # now=datetime.strptime(date,date_format).date()
-    # now = date.today()
     now = date.fromtimestamp(virtual_time.get_current_time())
     result = cursor.execute(
         """
@@ -238,66 +153,24 @@ def getPileReport(pile_id, start_date, end_date, cursor):
 # TAG:充电后调用一次
 # 充电一次后，更新充电桩在pile_report的数据
 # 成功返回1
-def updatePileReport(pile_id: int, chargeTime: float, capacity: float, chargeFee: float, serviceFee: float):
+def updatePileReport(pile_id: int, chargeTime: float, capacity: float, chargeFee: float, serviceFee: float,
+                     conn=my_conn, c=my_cursor):
     # TAG获取年月日的字符串
     now = date.fromtimestamp(virtual_time.get_current_time())
-    result = cursor.execute("select * from pile_report where pile_id=={} and date=='{}'".format(pile_id, now))
+    result = c.execute("select * from pile_report where pile_id=={} and date=='{}'".format(pile_id, now))
     result = result.fetchall()
     if len(result):
-        cursor.execute(
-            "update pile_report set total_charge_num={} where pile_id={} and date='{}'".format(str(result[0][2] + 1),
-                                                                                               pile_id, now))
-        cursor.execute("update pile_report set total_charge_time={} where pile_id={} and date='{}'".format(
-            str(result[0][3] + chargeTime), pile_id, now))
-        cursor.execute("update pile_report set total_capacity={} where pile_id={} and date='{}'".format(
-            str(result[0][4] + capacity), pile_id, now))
-        cursor.execute("update pile_report set total_charge_fee={} where pile_id={} and date='{}'".format(
-            str(result[0][5] + chargeFee), pile_id, now))
-        cursor.execute("update pile_report set total_service_fee={} where pile_id={} and date='{}'".format(
-            str(result[0][6] + serviceFee), pile_id, now))
+        # 更新pile_report表中的total_charge_num,total_charge_time,total_capacity,total_charge_fee,total_service_fee
+        c.execute(f"update pile_report set total_charge_num=total_charge_num+1 \
+        ,total_charge_time=total_charge_time+{chargeTime} \
+        ,total_capacity=total_capacity+{capacity} \
+        ,total_charge_fee=total_charge_fee+{chargeFee} \
+        ,total_service_fee=total_service_fee+{serviceFee} \
+        where pile_id={pile_id} and date='{now}'")
         conn.commit()
         return 1
     # TAG 没有当日的充电桩记录则进行初始化
     else:
-        init_pile_report(pile_id, cursor, conn)
+        init_pile_report(pile_id, c, conn)
         print("WARING:Don't exist pile_id {},date {},so init pile".format(pile_id, now))
-        updatePileReport(pile_id, chargeTime, capacity, chargeFee, serviceFee)
-
-
-# init_pile_state(10, cursor, conn)
-# init_pile_state(20, cursor, conn)
-# init_pile_state(31, cursor, conn)
-# init_pile_state(41, cursor, conn)
-# init_pile_state(51, cursor, conn)
-
-# virtual_time.start()
-# updatePileReport(10,1.2,3.5,1.4,0.7,cursor,conn)
-# updatePileReport(11,2.4,3,2,0.4,cursor,conn)
-# changePileState(20,'关闭')
-# getPileState(20)
-# changePileState(51,'关闭')
-# getPileState(31)
-# getPileState(10)
-# print(get_pile_state(10))
-'''
-# getPileState(20,cursor,conn)
-
-getPileState(20,cursor,conn)
-
-getPileState(20,cursor,conn)
-date_format = "%Y-%m-%d"
-getPileReport(20,datetime.strptime('2023-06-01',date_format).date(),datetime.strptime('2023-06-02',date_format).date(),cursor)
-changePileState(10,'关闭',cursor,conn)
-getPileState(10,cursor,conn)
-changePileState(31,'损坏',cursor,conn)
-getPileState(31,cursor,conn)
-# 关闭数据库连接
-conn.close()
-'''
-'''
-updatePileReport(10,3.4,1.5,2.4,9.7,cursor,conn)
-updatePileReport(10,2,9,3.4,5.3,cursor,conn)
-updatePileReport(31,5.4,3.6,2,6,cursor,conn)
-updatePileReport(41,1,1.6,5,8,cursor,conn)
-updatePileReport(51,2,6.3,1,6,cursor,conn)'''
-# init_pile_state(10, cursor, conn)
+        updatePileReport(pile_id, chargeTime, capacity, chargeFee, serviceFee, conn, c)

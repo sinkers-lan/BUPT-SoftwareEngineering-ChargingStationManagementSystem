@@ -646,8 +646,10 @@ def allow_charge():
             degree = st.session_state['degree']
             power = 30.0 if mode == "快充" else 7.0
             during = degree / power
-            st.session_state['during'] = during
-            st.session_state['end_time'] = utils.format_datetime_s(time.time() + during * 3600)
+            hour = int(during)
+            minute = int((during - hour) * 60)
+            second = int((during - hour - minute / 60) * 3600)
+            st.session_state['during'] = f"{hour}小时{minute}分钟{second}秒"
 
     st.write("您已经可以开始充电了！是否开始充电？")
     col1, col2 = st.columns(2)
@@ -719,8 +721,8 @@ def begin_charge():
     st.button("结束充电", on_click=cancel_on_click, use_container_width=True)
 
     # st.markdown("#### 充电进度")
-    st.write("预计充电时间为：", round(st.session_state['during'], 2), "小时")
-    st.write("预计充电结束时间为：", st.session_state['end_time'])
+    st.write("预计充电时间为：", st.session_state['during'])
+    # st.write("预计充电结束时间为：", st.session_state['end_time'])
     with st.spinner('正在充电中...'):
         while True:
             get_front_num(st.session_state['stage'])

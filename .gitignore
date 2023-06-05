@@ -1,4 +1,6 @@
 
 fastapi/.idea/*
 
+streamlit/.idea/*
+
 *.pyc

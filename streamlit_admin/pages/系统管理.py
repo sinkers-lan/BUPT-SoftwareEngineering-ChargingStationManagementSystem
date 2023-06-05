@@ -18,17 +18,24 @@ st.title("充电桩系统操作")
 st.markdown("---")
 
 
-def accelerate(rate):
+def accelerate():
     data = {
-        "rate": rate
+        "rate": st.session_state['rate']
     }
     data_ = utils.post(data, path="/system/accelerate")
     st.write(data_)
 
 
-with st.form(key='my_form'):
-    rate = st.slider("系统时间倍率", 1, 200, 1, 1)
-    submit_button = st.form_submit_button(label='提交', on_click=accelerate, args=(rate,), use_container_width=True)
+rate = st.slider("系统时间倍率", 1, 500, 1, 1, key="rate", on_change=accelerate)
+
+
+
+def get_time():
+    data = utils.post({}, path="/system/getTime")
+    st.write(data)
+
+
+st.button("获取系统时间", on_click=get_time, use_container_width=True)
 
 
 def transform():

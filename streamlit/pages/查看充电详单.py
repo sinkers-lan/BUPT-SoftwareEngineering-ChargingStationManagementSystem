@@ -42,7 +42,7 @@ def get_pay_bill(bill_id):
 st.markdown('### 电车充电账单信息')
 st.markdown('---')
 
-if "car" not in st.session_state:
+if "stage" not in st.session_state or st.session_state['stage'] == "用户登录":
     st.write("请先登录")
     st.stop()
 

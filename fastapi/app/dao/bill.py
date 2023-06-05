@@ -1,6 +1,6 @@
-from ..utils import utils
-from ..dao.connection import my_connect
-from ..utils.my_time import virtual_time
+from app.utils import utils
+from app.dao.connection import my_connect
+from app.utils.my_time import virtual_time
 import sqlite3
 
 
@@ -73,10 +73,10 @@ def get_bill_from_id(bill_id: int):
         }
 
 
-def get_bill(bill_ls):
+def get_bill(bill_ls, conn=my_connect.conn, c=my_connect.c):
     """bill_id,car_id,bill_date,pile_id,charge_amount,charge_duration, \
     start_time,end_time,total_charge_fee,total_service_fee,total_fee,pay_state"""
-    cursor = my_connect.c.execute(f"select bill_id,car_id,bill_date,pile_id,charge_amount,charge_duration, \
+    cursor = c.execute(f"select bill_id,car_id,bill_date,pile_id,charge_amount,charge_duration, \
     start_time,end_time,total_charge_fee,total_service_fee,total_fee,pay_state from bill where bill_ls='{bill_ls}'")
     if cursor.rowcount == 0:
         raise Exception("bill_ls is not exist")

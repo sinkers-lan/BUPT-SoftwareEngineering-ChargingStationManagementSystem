@@ -2,13 +2,14 @@ import copy
 import datetime
 import threading
 from typing import List, Optional, Dict
-from ..utils.my_time import virtual_time, VirtualTimer
-from ..utils import my_time, utils
+from app.utils.my_time import virtual_time, VirtualTimer
+from app.utils import my_time, utils
 from enum import Enum
-from ..utils import config
-from ..dao import bill
+from app.utils import config
+from app.dao import bill
 import app.dao.user as user_dao
 import app.dao.admin as admin_dao
+import sqlite3
 
 
 # print("service:", virtual_time)
@@ -786,12 +787,16 @@ class Dispatch:
         self.__call_out(pile_id, mode)
         # 改变充电桩的累计数据
         bill_ls = self.info.get_bill_id(car_id)
-        data = bill.get_bill(bill_ls)
+        # 由于新线程不能使用原有的数据库连接，所以需要重新获取
+        conn = sqlite3.connect('SoftwareEngineering.db')
+        c = conn.cursor()
+        data = bill.get_bill(bill_ls, conn, c)
         admin_dao.updatePileReport(pile_id=self.info.get_pile_id(car_id),
                                    chargeTime=data["charge_duration"],
                                    capacity=data['charge_amount'],
                                    chargeFee=data['total_charge_fee'],
-                                   serviceFee=data['total_service_fee'], )
+                                   serviceFee=data['total_service_fee'],
+                                   conn=conn, c=c)
 
     def user_terminate(self, car_id):  # 和取消充电合并
         # 用户在不同区做不同处理

@@ -54,5 +54,11 @@ class Rate(BaseModel):
 @router.post("/accelerate")
 async def time_accelerate(pram: Rate):
     virtual_time.accelerate(pram.rate)
-    return {'code': 1, 'message': '加速成功'}
+    # print(virtual_time)
+    return {'code': 1, 'message': '加速成功', 'data': pram.rate}
 
+
+@router.post("/getTime")
+async def get_time():
+    # print(virtual_time)
+    return {'code': 1, 'message': '获取成功', 'data': virtual_time.get_current_datetime()}

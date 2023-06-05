@@ -9,17 +9,18 @@ class VirtualTime:
         self.start_time = time.time()
         self.time_multiplier = 1
         self.current_virtual_time = time.time()
+        self.last_real_time = time.time()
         self.is_start = False
 
     def start(self):
         # 在后台线程中更新虚拟时间
         def update_virtual_time():
             while True:
-                elapsed_time = time.time() - self.start_time
+                elapsed_time = time.time() - self.last_real_time
+                self.last_real_time = time.time()
                 virtual_elapsed_time = elapsed_time * self.time_multiplier
-                self.current_virtual_time = self.start_time + virtual_elapsed_time
+                self.current_virtual_time += virtual_elapsed_time
                 time.sleep(0.1)  # 调整更新间隔
-                # print(self.get_current_datetime())
 
         if not self.is_start:
             # 创建并启动后台线程
