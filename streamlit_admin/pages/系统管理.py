@@ -31,7 +31,7 @@ rate = st.slider("系统时间倍率", 1, 500, 1, 1, key="rate", on_change=accel
 
 
 def get_time():
-    data = utils.post({}, path="/system/getTime")
+    data = utils.post({}, path="/getTime")
     st.write(data)
 
 
@@ -68,15 +68,15 @@ def pile_repair(pile_id):
     st.write(data_)
 
 
-pile_id_list, pile_label = transform()
-print(pile_id_list)
-pile_num = len(pile_id_list)
-for i in range(pile_num):
-    st.markdown(f"##### {pile_label[i]}")
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        if st.button(f"损坏", key=f"pile_crash{i}", use_container_width=True):
-            pile_crash(pile_id_list[i])
-    with col2:
-        if st.button(f"维修完毕", key=f"pile_repair{i}", use_container_width=True):
-            pile_repair(pile_id_list[i])
+# pile_id_list, pile_label = transform()
+# print(pile_id_list)
+# pile_num = len(pile_id_list)
+# for i in range(pile_num):
+#     st.markdown(f"##### {pile_label[i]}")
+#     col1, col2 = st.columns([1, 1])
+#     with col1:
+#         if st.button(f"损坏", key=f"pile_crash{i}", use_container_width=True):
+#             pile_crash(pile_id_list[i])
+#     with col2:
+#         if st.button(f"维修完毕", key=f"pile_repair{i}", use_container_width=True):
+#             pile_repair(pile_id_list[i])

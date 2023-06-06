@@ -8,9 +8,12 @@ app.include_router(user.router)
 app.include_router(admin.router)
 app.include_router(system.router)
 
-# print("mian:", virtual_time)
-
 
 @app.get("/")
 async def root():
     return {"message": "hello world"}
+
+
+@app.post("/getTime")
+async def get_time():
+    return {'code': 1, 'message': '获取成功', 'data': {'time': virtual_time.get_current_datetime()}}

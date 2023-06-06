@@ -6,8 +6,8 @@ import json
 
 # HOST = "http://10.112.241.69:8002"
 # HOST = "http://123.56.44.128:8002"
-# HOST = "http://10.28.136.251:8002"
-HOST = "http://47.93.6.45"
+HOST = "http://10.28.136.251:8002"
+# HOST = "http://47.93.6.45"
 
 
 def post(my_json: dict, path: str, token=None) -> dict:

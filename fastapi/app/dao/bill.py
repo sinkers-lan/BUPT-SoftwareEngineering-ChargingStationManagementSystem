@@ -31,7 +31,7 @@ def create_bill(car_id: str, pile_id: int, charge_amount: float, charge_duration
     start_time = virtual_time.get_current_time()
     end_time = start_time + charge_duration
     # print("when create bill, end_time is ", utils.formate_datetime_s(end_time))
-    total_fee = total_charge_fee + total_service_fee
+    total_fee = round(total_charge_fee + total_service_fee, 2)
     my_connect.c.execute(f"INSERT INTO bill (car_id,bill_date,pile_id,charge_amount,charge_duration, \
     start_time,end_time,total_charge_fee,total_service_fee,total_fee,pay_state) \
     VALUES ('{car_id}', '{bill_date}', {pile_id}, {charge_amount}, {charge_duration}, \
@@ -146,7 +146,7 @@ def get_car_id(bill_ls: str):
 
 def update_bill(bill_ls: str, total_charge_fee: float, total_service_fee: float, end_time: float,
                 charge_duration: float, charge_amount: float):
-    total_fee = total_charge_fee + total_service_fee
+    total_fee = round(total_charge_fee + total_service_fee, 2)
     # print("when update bill, end_time is", utils.formate_datetime_f(end_time), utils.formate_datetime_s(end_time))
     my_connect.c.execute(f"UPDATE bill set total_charge_fee = {total_charge_fee},total_service_fee = {total_service_fee}, \
         total_fee = {total_fee},end_time = {end_time},charge_duration={charge_duration},charge_amount={charge_amount}\
