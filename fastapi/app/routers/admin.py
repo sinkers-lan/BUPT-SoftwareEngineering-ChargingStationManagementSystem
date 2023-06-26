@@ -111,7 +111,6 @@ class Admin(BaseModel):
     password: str
 
 
-# 绑定路由和视图函数
 @router.post("/login")
 async def login(admin: Admin):
     if admin.password == admin_password:

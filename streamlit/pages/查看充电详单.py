@@ -43,7 +43,8 @@ def get_pay_bill(bill_id):
 st.markdown('### 电车充电账单信息')
 st.markdown('---')
 
-if "stage" not in st.session_state or st.session_state['stage'] == "用户登录" or st.session_state['stage'] == "用户注册":
+if "stage" not in st.session_state or st.session_state['stage'] == "用户登录" or st.session_state[
+    'stage'] == "用户注册":
     st.write("请先登录")
     st.stop()
 
@@ -57,7 +58,7 @@ else:
 
 st.markdown('---')
 
-if len(all_bills) == 0:
+if len(all_bills) == 0 or all_bills is None:
     st.warning('没有查到账单信息')
     st.stop()
 for bill in all_bills:
@@ -66,7 +67,7 @@ for bill in all_bills:
     with col1:
         st.write('**车牌号:**', bill['car_id'])
         st.write('**账单日期:**', bill['bill_date'])
-        st.write('**总费用:**', bill['total_fee'], '元')
+        st.write('**总费用:**', round(bill['total_fee'], 2), '元')
     with col2:
         st.write('**充电开始时间:**', bill['start_time'])
         st.write('**充电结束时间:**', bill['end_time'])
@@ -101,11 +102,13 @@ if bill_details:
         st.write(bill_details['bill_date'])
         st.write(bill_details['start_time'])
         st.write(bill_details['end_time'])
-        st.write(bill_details['charge_amount'], '度')
-        st.write(bill_details['charge_duration'], '时')
-        st.write(bill_details['total_charge_fee'], '元')
-        st.write(bill_details['total_service_fee'], '元')
-        st.write(bill_details['total_fee'], '元')
+        st.write(round(bill_details['charge_amount'], 2), '度')
+        hour, mint, sec = utils.get_hour_min_sec(bill_details['charge_duration'] * 3600)
+        st.write(str(hour), '时', str(mint), '分', str(sec), '秒')
+        # st.write(bill_details['charge_duration'])
+        st.write(round(bill_details['total_charge_fee'], 2), '元')
+        st.write(round(bill_details['total_service_fee'], 2), '元')
+        st.write(round(bill_details['total_fee'], 2), '元')
         st.write('已支付' if bill_details['pay_state'] == 1 else '未支付')
     if bill_details['pay_state'] == 0:
         st.button('支付', on_click=get_pay_bill, args=(bill_details['bill_id'],), use_container_width=True)

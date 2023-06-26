@@ -129,6 +129,7 @@ def show_info():
 
 
 def login():
+    show_info()
     st.markdown("## 智能充电桩充电系统 🎈")
     st.markdown('---')
     st.markdown("#### 用户登录")
@@ -152,13 +153,17 @@ def login():
             my_json = {"user_name": phone, "password": password}
             data = utils.post(my_json=my_json, path="/user/login")
             if data['code'] == 1:
+                print(data)
                 st.session_state['user'] = phone
                 st.session_state['token'] = data['data']['token']
                 st.session_state['car'] = data['data']['car_id']
                 st.session_state['capacity'] = data['data']['car_capacity']
                 st.session_state['stage'] = Stage.SUBMIT.value
+                # st.experimental_rerun()
             else:
                 st.error(data['message'])
+                # st.session_state['error_info'] = data['message']
+                # st.session_state['error_flag'] = True
             pass
 
     col1, col2 = st.columns(2)
@@ -176,10 +181,11 @@ def register():
     st.markdown("## 智能充电桩充电系统 🎈")
     st.markdown('---')
     st.markdown("#### 用户注册")
+    show_info()
     phone = st.text_input("手机号")
     password = st.text_input("密码", type="password")
     car = st.text_input("车牌号")
-    capacity = st.slider('电车电池总容量 (度)', 15.0, 60.0, 45.0, 0.1, key="capacity_form")
+    capacity = st.slider('电车电池总容量 (度)', 15.0, 150.0, 45.0, 0.1, key="capacity_form")
 
     def login_on_click(args):
         print(args)
@@ -199,14 +205,14 @@ def register():
             st.error("车牌号不能为空")
             return
         # pattern = "^[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼A-Z]{1}[A-Z]{1}\s{1}[A-Z0-9]{4}[A-Z0-9挂学警港澳]{1}$"
-        pattern = "([京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼]" \
-                  "{1}(([A-HJ-Z]{1}[A-HJ-NP-Z0-9]{5})|([A-HJ-Z]{1}(([DF]{1}[A-HJ-NP-Z0-9]{1}[0-9]{4})|([0-9]{5}[DF]" \
-                  "{1})))|([A-HJ-Z]{1}[A-D0-9]{1}[0-9]{3}警)))|([0-9]{6}使)|((([沪粤川云桂鄂陕蒙藏黑辽渝]{1}A)|鲁B|闽D|蒙E|蒙H)" \
-                  "[0-9]{4}领)|(WJ[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼·•]{1}[0-9]{4}[TDSHBXJ0-9]{1})" \
-                  "|([VKHBSLJNGCE]{1}[A-DJ-PR-TVY]{1}[0-9]{5})"
-        if not re.findall(pattern, car):
-            st.error("车牌号格式不正确")
-            return
+        # pattern = "([京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼]" \
+        #           "{1}(([A-HJ-Z]{1}[A-HJ-NP-Z0-9]{5})|([A-HJ-Z]{1}(([DF]{1}[A-HJ-NP-Z0-9]{1}[0-9]{4})|([0-9]{5}[DF]" \
+        #           "{1})))|([A-HJ-Z]{1}[A-D0-9]{1}[0-9]{3}警)))|([0-9]{6}使)|((([沪粤川云桂鄂陕蒙藏黑辽渝]{1}A)|鲁B|闽D|蒙E|蒙H)" \
+        #           "[0-9]{4}领)|(WJ[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼·•]{1}[0-9]{4}[TDSHBXJ0-9]{1})" \
+        #           "|([VKHBSLJNGCE]{1}[A-DJ-PR-TVY]{1}[0-9]{5})"
+        # if not re.findall(pattern, car):
+        #     st.error("车牌号格式不正确")
+        #     return
         if capacity == 0:
             st.error("电车电池容量不能为零")
             return
@@ -218,9 +224,12 @@ def register():
             st.session_state['capacity'] = capacity
             st.session_state['car'] = car
             st.session_state['stage'] = Stage.SUBMIT.value
+            # st.experimental_rerun()
         else:
             st.write(data)
             st.error(data['message'])
+            # st.session_state['error_info'] = data['message']
+            # st.session_state['error_flag'] = True
         pass
 
     col1, col2 = st.columns(2)
@@ -323,7 +332,7 @@ def submit_charging_request():
     with st.empty():
         while True:
             st.caption(f"当前时间：{get_time()}")
-            time.sleep(1)
+            time.sleep(2)
 
 
 if st.session_state['stage'] == Stage.SUBMIT.value:
@@ -358,7 +367,8 @@ def backward(default_stage):
     if st.session_state['loop']:
         for seconds in range(0, 20):
             place_holder_1.write(f"20秒后超时返回  ⏳ {20 - seconds}")
-            place_holder_2.caption(f"当前时间：{get_time()}")
+            if seconds % 2 == 0:
+                place_holder_2.caption(f"当前时间：{get_time()}")
             time.sleep(1)
         else:
             place_holder_1.write("操作超时")
@@ -413,7 +423,7 @@ def wait():
             percent = (st.session_state['initial_queue_len'] - front_num) / st.session_state['initial_queue_len']
             my_bar.progress(percent, text=f"前车等待数量: {front_num}")
         place_holder.caption(f"当前时间：{get_time()}")
-        time.sleep(1)
+        time.sleep(2)
 
 
 if st.session_state['stage'] == Stage.WAIT.value:
@@ -581,7 +591,7 @@ def wait_for_charge():
             percent = (st.session_state['initial_queue_len'] - front_num) / st.session_state['initial_queue_len']
             my_bar.progress(percent, text=f"前车等待数量: {front_num}")
         place_holder.caption(f"当前时间：{get_time()}")
-        time.sleep(1)
+        time.sleep(2)
 
 
 if st.session_state['stage'] == Stage.WAIT_FOR_CHARGE.value:
@@ -670,7 +680,7 @@ def allow_charge():
     while True:
         get_front_num(st.session_state['stage'])
         place_holder.caption(f"当前时间：{get_time()}")
-        time.sleep(1)
+        time.sleep(2)
 
 
 if st.session_state['stage'] == Stage.ALLOW_CHARGE.value:
@@ -714,10 +724,51 @@ if st.session_state['stage'] == Stage.CANCEL_ALLOW_CHARGE.value:
     cancel_allow_charge()
 
 
+def show_charge():
+    data = {
+        "car_id": st.session_state['car']
+    }
+    _data = utils.post(data, path="/user/getChargingState", token=st.session_state['token'])
+    if _data['code'] == 0:
+        st.error(_data['message'])
+        return
+    st.session_state['bill_id'] = _data['data']['bill_id']
+    bill_details = _data['data']
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.session_state['stage'] == Stage.PAY.value:
+            st.write("**账单流水号**：")
+            st.write("**车牌号**：")
+            st.write("**账单日期**：")
+            st.write("**充电起始时间**：")
+            st.write("**充电结束时间**：")
+        st.write("**充电量**：")
+        st.write("**充电总时长**：")
+        st.write("**充电费用**：")
+        st.write("**服务费用**：")
+        st.write("**总费用**：")
+    with col2:
+        if st.session_state['stage'] == Stage.PAY.value:
+            st.write(bill_details['bill_id'])
+            st.write(bill_details['car_id'])
+            st.write(bill_details['bill_date'])
+            st.write(bill_details['start_time'])
+            st.write(bill_details['end_time'])
+        st.write(round(bill_details['charge_amount'], 2), '度')
+        hour, mint, sec = utils.get_hour_min_sec(bill_details['charge_duration'] * 3600)
+        st.write(str(hour), '时', str(mint), '分', str(sec), '秒')
+        # st.write(bill_details['charge_duration'])
+        st.write(round(bill_details['total_charge_fee'], 2), '元')
+        st.write(round(bill_details['total_service_fee'], 2), '元')
+        st.write(round(bill_details['total_fee'], 2), '元')
+
+
 def begin_charge():
     st.markdown("### 正在充电中")
     st.markdown("----")
     show_info()
+    show_hao()
+    st.write("预计充电时间为：", st.session_state['during'])
 
     def cancel_on_click():
         st.session_state['stage'] = Stage.CANCEL_CHARGE.value
@@ -726,14 +777,18 @@ def begin_charge():
     st.button("充电结束", on_click=cancel_on_click, use_container_width=True)
 
     # st.markdown("#### 充电进度")
-    st.write("预计充电时间为：", st.session_state['during'])
     # st.write("预计充电结束时间为：", st.session_state['end_time'])
+    place_holder_2 = st.empty()
     place_holder = st.empty()
     with st.spinner('正在充电中...'):
         while True:
             get_front_num(st.session_state['stage'])
+            with place_holder_2.container():
+                st.markdown("---")
+                st.markdown("##### 充电进度")
+                show_charge()
             place_holder.caption(f"当前时间：{get_time()}")
-            time.sleep(1)
+            time.sleep(2)
 
 
 if st.session_state['stage'] == Stage.CHARGE.value:
@@ -782,38 +837,8 @@ def pay():
     st.markdown("---")
     show_info()
 
-    data = {
-        "car_id": st.session_state['car']
-    }
-    _data = utils.post(data, path="/user/getChargingState", token=st.session_state['token'])
-    if _data['code'] == 0:
-        st.error(_data['message'])
-        return
-    st.session_state['bill_id'] = _data['data']['bill_id']
-    bill_details = _data['data']
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        st.write("**账单流水号**：")
-        st.write("**车牌号**：")
-        st.write("**账单日期**：")
-        st.write("**充电起始时间**：")
-        st.write("**充电结束时间**：")
-        st.write("**充电量**：")
-        st.write("**充电总时长**：")
-        st.write("**充电费用**：")
-        st.write("**服务费用**：")
-        st.write("**总费用**：")
-    with col2:
-        st.write(bill_details['bill_id'])
-        st.write(bill_details['car_id'])
-        st.write(bill_details['bill_date'])
-        st.write(bill_details['start_time'])
-        st.write(bill_details['end_time'])
-        st.write(bill_details['charge_amount'], '度')
-        st.write(bill_details['charge_duration'], '时')
-        st.write(bill_details['total_charge_fee'], '元')
-        st.write(bill_details['total_service_fee'], '元')
-        st.write(bill_details['total_fee'], '元')
+
+    show_charge()
 
     def pay_on_click():
         data = {

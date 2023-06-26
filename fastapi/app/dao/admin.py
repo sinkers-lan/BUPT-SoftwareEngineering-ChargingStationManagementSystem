@@ -12,6 +12,28 @@ import app.utils.config as config
 如果connect()内的数据库名称不存在，则新建数据库，再建立连接
 """
 
+def create_table():
+    # 检查表是否存在
+    cursor = my_connect.c.execute("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='pile_state'")
+    for row in cursor:
+        if row[0] == 1:
+            print("pile_state表格已存在")
+            return
+    sql = """CREATE TABLE pile_report(
+                pile_id Integer,
+                date DATE NOT NULL,
+                total_charge_num INTEGER NOT NULL,
+                total_charge_time DOUBLE NOT NULL,
+                total_capacity DOUBLE NOT NULL,
+                total_charge_fee DOUBLE NOT NULL,
+                total_service_fee DOUBLE NOT NULL,
+                primary key (pile_id,date)
+                );"""
+    # 执行SQL指令
+    my_connect.c.execute(sql)
+    print("pile_report表格创建成功")
+    my_connect.conn.commit()
+
 my_conn = my_connect.conn
 my_cursor = my_connect.c
 # 快充充电桩数量

@@ -17,9 +17,11 @@ def generate_token(user_id: int):
 
 
 def decode_token(token):
+    if token is None:
+        return False, "token为空"
     try:
         data = jwt.decode(token, key="hello_my_teammates", algorithms='HS256')
-    except jwt.DecodeError:
+    except jwt.exceptions.InvalidTokenError:
         print("token解析失败")
         return False, "token解析失败"
     exp = data.pop('exp')

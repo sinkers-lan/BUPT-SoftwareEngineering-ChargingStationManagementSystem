@@ -7,6 +7,12 @@ import sqlite3
 
 
 def bill_table():
+    # 检查表是否存在
+    my_connect.c.execute('''SELECT count(*) FROM sqlite_master WHERE type='table' AND name='bill' ''')
+    for row in my_connect.c:
+        if row[0] == 1:
+            print("bill表格已存在")
+            return
     my_connect.c.execute('''CREATE TABLE bill
                (bill_id          Integer PRIMARY KEY autoincrement,
                bill_ls           TEXT,

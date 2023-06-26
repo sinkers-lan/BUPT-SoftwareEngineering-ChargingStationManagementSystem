@@ -98,6 +98,34 @@ def start_timer(delay, callback, args):
     virtual_timer = VirtualTimer(virtual_time, specified_time, callback, args)
     virtual_timer.start()
     return virtual_timer
+
+
+class CheckTimer:
+    def __init__(self, virtual_time: VirtualTime, callback, args: Tuple):
+        self.virtual_time = virtual_time
+        self.callback = callback
+        self.args = args
+        self.running = False
+
+    def start(self):
+        def check_time_and_callback():
+            while self.running:
+                current_virtual_time = self.virtual_time.get_current_time()
+                data_time = datetime.datetime.fromtimestamp(current_virtual_time)
+                if data_time.minute % 30 == 0 and 0 <= data_time.second <= 1:
+                    print("半小时到时", data_time)
+                    self.callback(*self.args)
+                time.sleep(0.1)
+
+        if not virtual_time.is_start:
+            raise Exception('Virtual time has not yet started')
+        if not self.running:
+            self.running = True
+            self.thread = threading.Thread(target=check_time_and_callback, daemon=True, name='timer')
+            self.thread.start()
+            print("半小时定时器已启动")
+
+
 # if __name__ == "__main__":
 #     virtual_time.start()
 #     virtual_time.moderate()

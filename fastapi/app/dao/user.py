@@ -8,7 +8,21 @@ from app.dao.connection import my_connect
 
 
 """创建表"""
-
+def create_table():
+    # 检查表是否存在
+    cursor = my_connect.c.execute("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='user'")
+    for row in cursor:
+        if row[0] == 1:
+            print("数据表user已存在")
+            return
+    my_connect.c.execute('''CREATE TABLE user
+               (user_id             Integer PRIMARY KEY autoincrement,
+               user_name           TEXT     NOT NULL,
+               hash_password       TEXT     NOT NULL,
+               car_id             TEXT     NOT NULL,
+               capacity            REAL       NOT NULL);''')
+    print("数据表创建成功")
+    my_connect.conn.commit()
 
 #
 # c.execute('''CREATE TABLE user

@@ -9,6 +9,13 @@
           </mappings>
         </serverdata>
       </paths>
+      <paths name="dachuang@10.112.241.69:33 password (2)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="root@123.56.44.128:22">
         <serverdata>
           <mappings>
@@ -33,7 +40,7 @@
       <paths name="root@123.56.44.128:22 password">
         <serverdata>
           <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/root/workspace/python/BUPT-SoftwareEngineering" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>

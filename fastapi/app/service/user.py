@@ -123,6 +123,36 @@ class ChargingInfo:
             info_list.append(info_dict)
         return info_list
 
+    def print_all_car_info_with_fee(self):
+        info_list = []
+        for car_id in self.__charging_info.keys():
+            if self.get_car_state(car_id) == UserState.charging:
+                start_time = bill.get_start_time(self.get_bill_id(car_id))
+                charge_duration = virtual_time.get_current_time() - start_time
+                power = 30.0 if self.get_mode(car_id) == Mode.fast else 7.0
+                charge_amount = charge_duration * power / 3600
+                charge_fee, service_fee = utils.calculate_bill(start_time, charge_duration, power)
+                info_dict = {
+                    "car_id": car_id,
+                    "request_mode": self.get_mode(car_id).value,
+                    "pile_id": self.get_pile_id(car_id),
+                    "car_state": self.get_car_state(car_id).value,
+                    "total_fee": round(charge_fee + service_fee, 2),
+                    "charge_amount": charge_amount,
+                }
+                info_list.append(info_dict)
+                print(info_dict)
+            elif self.get_car_state(car_id) == UserState.waiting_for_charging:
+                info_dict = {
+                    "car_id": car_id,
+                    "request_mode": self.get_mode(car_id).value,
+                    "pile_id": self.get_pile_id(car_id),
+                    "car_state": self.get_car_state(car_id).value,
+                }
+                info_list.append(info_dict)
+                print(info_dict)
+
+
 
 charging_info = ChargingInfo()
 
@@ -656,6 +686,7 @@ class Dispatch:
         self.info: ChargingInfo = charging_info
         self.q_info_factory: QInfoFactory = QInfoFactory()
         self.damage_area: DamageArea = DamageArea()
+        self.check_timer = my_time.CheckTimer(virtual_time, self.info.print_all_car_info_with_fee, args=())
 
     def get_car_state(self, car_id):
         car_state = self.info.get_car_state(car_id)
@@ -732,6 +763,7 @@ class Dispatch:
             return self.area.waiting_area.get_car_position(car_id)
 
     def new_car_come(self, user_id, car_id, mode, degree):
+        # self.check_timer.start()
         # 把mode从字符串转换成枚举类型
         mode = Mode(mode)
         if self.info.get_car_state(car_id) != UserState.free:
@@ -896,6 +928,18 @@ class Dispatch:
             return {"code": 0, "message": "用户不处于结束充电状态或充电状态"}
         bill_ls = self.info.get_bill_id(car_id)
         data = bill.get_bill(bill_ls)
+        if state == UserState.charging:
+            start_time = bill.get_start_time(bill_ls)
+            end_time = virtual_time.get_current_time()
+            charge_duration = end_time - start_time
+            power = 30.0 if self.info.get_mode(car_id) == Mode.fast else 7.0
+            charge_amount = charge_duration * power / 3600
+            charge_fee, service_fee = utils.calculate_bill(start_time, charge_duration, power)
+            data['charge_amount'] = charge_amount
+            data['total_charge_fee'] = charge_fee
+            data['total_service_fee'] = service_fee
+            data['end_time'] = utils.format_datetime_s(end_time)
+            data['total_fee'] = charge_fee + service_fee
         return {"code": 1, "message": "查询成功", "data": data}
 
     def pay_the_bill(self, bill_ls):

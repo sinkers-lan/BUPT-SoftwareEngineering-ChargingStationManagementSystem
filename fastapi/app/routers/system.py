@@ -32,3 +32,4 @@ async def time_accelerate(pram: Rate):
 async def get_time():
     # print(virtual_time)
     return {'code': 1, 'message': '获取成功', 'data': virtual_time.get_current_datetime()}
+

@@ -1,4 +1,4 @@
-FastChargingPileNum = 2
+FastChargingPileNum = 4
 TrickleChargingPileNum = 3
 WaitingAreaSize = 6
 ChargingQueueLen = 2
