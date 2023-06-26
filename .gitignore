@@ -5,4 +5,4 @@ streamlit/.idea/*
 
 *.pyc
 
-idea/*
+.idea/*
