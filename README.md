@@ -60,3 +60,47 @@ streamlit run 登录和退出.py
 uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload 
 ```
 
+
+
+## 实现展示
+
+链接可以直接试用哦~
+
+用户端：[用户充电 · Streamlit](http://123.56.44.128:8501/)
+
+服务端：[管理员 · Streamlit](http://123.56.44.128:8502/)
+
+注：如果链接打不开的话，可能是因为远端服务器跑炸了，或者我已经关闭了服务，请在issue联系我。
+
+
+
+## 部分界面展示
+
+提交请求
+
+![image-20230626213513344](https://sinkers-pic.oss-cn-beijing.aliyuncs.com/img/image-20230626213513344.png)
+
+等待叫号
+
+![image-20230626213655464](https://sinkers-pic.oss-cn-beijing.aliyuncs.com/img/image-20230626213655464.png)
+
+修改模式
+
+![](https://sinkers-pic.oss-cn-beijing.aliyuncs.com/img/image-20230626213759537.png)
+
+允许充电
+
+![image-20230626215113250](https://sinkers-pic.oss-cn-beijing.aliyuncs.com/img/image-20230626215113250.png)
+
+充电中
+
+![image-20230626215153797](https://sinkers-pic.oss-cn-beijing.aliyuncs.com/img/image-20230626215153797.png)
+
+结束充电
+
+![image-20230626215228656](https://sinkers-pic.oss-cn-beijing.aliyuncs.com/img/image-20230626215228656.png)
+
+查看详单
+
+![image-20230626213605403](https://sinkers-pic.oss-cn-beijing.aliyuncs.com/img/image-20230626213605403.png)
+

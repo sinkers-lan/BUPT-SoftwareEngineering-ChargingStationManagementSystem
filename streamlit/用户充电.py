@@ -440,11 +440,11 @@ def change_mode():
         if st.session_state['mode'] == st.session_state['mode_form']:
             # st.warning("没有修改充电模式")
             st.session_state['warning_flag'] = True
-            st.session_state['warning_info'] = "没有修改充电模式"
+            st.session_state['warning_info'] = f"没有修改充电模式{st.session_state['mode']} {st.session_state['mode_form']}"
         else:
             data = {
                 "car_id": st.session_state['car'],
-                "request_mode": st.session_state['mode_form']
+                "request_mode": "F" if st.session_state['mode_form'] == '快充' else "T"
             }
             data_ = utils.post(data, path="/user/changeChargingMode", token=st.session_state['token'])
             if data_['code'] == 0:
