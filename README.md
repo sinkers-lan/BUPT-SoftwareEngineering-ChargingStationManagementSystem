@@ -12,6 +12,7 @@
 
 前后端均使用python语言编写。数据库使用python自带的SQLite，数据库如果没有创建会自动创建。
 
+接口文档：[https://easydoc.net/s/94446793/VxAIxOuY/bhyIvWOQ](https://easydoc.net/s/94446793/VxAIxOuY/bhyIvWOQ)
 
 
 ## Dependencies
